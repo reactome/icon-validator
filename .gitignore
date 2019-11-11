@@ -1,0 +1,14 @@
+ntelliJ idea git ignore
+*.iml
+.idea
+
+*.db
+
+/target
+
+*.jar
+*.war
+*.ear
+*.class
+
+*.bin
