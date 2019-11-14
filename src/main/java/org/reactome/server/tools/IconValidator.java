@@ -2,6 +2,8 @@ package org.reactome.server.tools;
 
 import com.martiansoftware.jsap.*;
 import org.reactome.server.tools.model.Icon;
+import org.reactome.server.tools.model.Person;
+import org.reactome.server.tools.model.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,7 +21,9 @@ public class IconValidator {
     private static final Logger logger = LoggerFactory.getLogger(IconValidator.class.getName());
 
     private final static List<String> CATEGORIES = new ArrayList<String>(Arrays.asList("arrow", "cell_element",  "cell_type", "compound", "human_tissue", "protein", "receptor", "transporter"));
-    private final static List<String> REFERENCES = new ArrayList<String>(Arrays.asList("arrow", "cell_element",  "cell_type", "compound", "human_tissue", "protein", "receptor", "transporter"));
+    private final static List<String> REFERENCES = new ArrayList<String>(Arrays.asList("UNIPROT", "GO", "CHEBI", "ENSEMBL", "CL", "UBERON", "INTERPRO", "MESH", "KEGG", "ENA", "SO", "BTO", "RFAM", "PUBCHEM", "PFAM", "COMPLEXPORTAL", "OMIT"));
+
+    private int error = 0;
 
     // directory = Users/chuqiao/Dev/Icons/LIB
     public static void main(String[] args) throws Exception {
@@ -39,7 +43,6 @@ public class IconValidator {
         if( jsap.messagePrinted() ) System.exit( 1 );
 
         new IconValidator().process(config);
-
     }
 
     public void process(JSAPResult config) {
@@ -54,9 +57,12 @@ public class IconValidator {
             }
         });
 
+        assert listOfAllFiles != null;
         for (File file : listOfAllFiles) {
             if (file.isFile()) {
-                convertXmlToObj(file);
+               Icon icon = convertXmlToObj(file);
+              // validateXMLObj(icon);
+           //   validate(ico);
             }
         }
 
@@ -81,7 +87,6 @@ public class IconValidator {
                 convertXmlToObj(file);
             }
         }
-
     }
 
     public Icon convertXmlToObj(File xmlFile){
@@ -89,7 +94,6 @@ public class IconValidator {
         JAXBContext jaxbContext;
 
         try {
-
             /* Icon i = new Icon();
             List<Person> persons = new ArrayList<Person>();
             persons.add(new Person("c","aaa",null, "gggg"));
@@ -107,26 +111,50 @@ public class IconValidator {
             Icon icon = (Icon) jaxbUnmarshaller.unmarshal(xmlFile);
 
             //Todo: split
-            List<String> cat = icon.getCategories();
-            for (String item : cat) {
-                if(!CATEGORIES.contains(item.toLowerCase())){
+            List<String> categories = icon.getCategories();
+            for (String category : categories) {
+                if(!CATEGORIES.contains(category.toLowerCase())){
+                    //ERROR
+                    // throw new IconValidationException("File BLA BLA - cater is not in the list");
                     //Todo: category is not found in category list ot no items in categories tag
-                    logger.info("category " + item + " is not correct in " + xmlFile.getName() );
+                    logger.info("category " + category + " is not correct in " + xmlFile.getName() );
                 }
             }
 
-           /* int sizePerson = icon.getPerson().size();
-              if(sizePerson == 0){
-                System.out.println("no person tag");
-            }*/
+            List<Person> person= icon.getPerson();
+            if( person == null){
+                logger.info("No person found in " + xmlFile.getName());
+            }
+
+            List<Reference> references = icon.getReferences();
+            if ( references != null){
+                for (Reference reference : references) {
+                    if(!REFERENCES.contains(reference.getDb())){
+                        //Todo: category is not found in category list ot no items in categories tag
+                        logger.info("reference " + reference.getDb() + " is not correct in " + xmlFile.getName() );
+                    }
+                }
+            } else{
+                //TODO:
+            }
+
+
+            List<String> synonyms = icon.getSynonyms();
+            if( synonyms != null) {
+                for (String synonym : synonyms) {
+                    if (synonym.equals(""))
+                        logger.warn("warning: where are the synonym is missing at <synonym> in " + xmlFile.getName());
+                }
+            } else {
+//                logger.info("warning: where are the synonyms is missing in " + xmlFile.getName());
+            }
 
             // Todo
-            System.out.println(icon);
             return icon;
 
-
         } catch (JAXBException e) {
-            e.printStackTrace();
+            logger.error(e.getCause().getMessage());
+            error++;
         }
         // Todo
         return null;
