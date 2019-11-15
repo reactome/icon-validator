@@ -11,7 +11,6 @@ import java.util.List;
 @XmlAccessorType(XmlAccessType.FIELD)
 public class Icon {
 
-
     @XmlElementWrapper(name="categories")
     @XmlElement(name="category")
     private List<String> categories;
@@ -39,10 +38,7 @@ public class Icon {
     @XmlElement
     private  boolean skip;
 
-
-    public Icon() {
-    }
-
+    public Icon() { }
 
     public Icon(List<String> categories, List<Person> person, String name, String description, String info, List<Reference> references, List<String> synonyms, boolean skip) {
         this.categories = categories;

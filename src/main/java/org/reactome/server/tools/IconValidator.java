@@ -34,14 +34,14 @@ public class IconValidator {
                 "Validates all the icon metadata before it is indexed during data release",
                 new Parameter[] {
                          new FlaggedOption( "directory", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.REQUIRED, 'd', "directory", "The place of icon XML s to import").setList(true).setListSeparator(',')
-                       , new FlaggedOption( "out", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.NOT_REQUIRED, 'o', "output", "The full path of the output binary file")
+                    //   , new FlaggedOption( "out", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.NOT_REQUIRED, 'o', "output", "The full path of the output binary file")
                         , new FlaggedOption( "force", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.NOT_REQUIRED, 'f', "force", "The full path of the output binary file")
                 }
         );
 
         JSAPResult config = jsap.parse(args);
 
-        if( jsap.messagePrinted() ) System.exit( 1 );
+        if(jsap.messagePrinted()) System.exit( 1 );
 
         new IconValidator().process(config);
     }
@@ -67,27 +67,21 @@ public class IconValidator {
                 }
             }
         }
-        errorLogger.error( error + " errors are found.");
+        errorLogger.error(error + " errors are found.");
     }
 
     private Icon convertXmlToObj(File xmlFile){
 
         JAXBContext jaxbContext;
-
         try {
             jaxbContext = JAXBContext.newInstance(Icon.class);
-
             Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-
             Icon icon = (Icon) jaxbUnmarshaller.unmarshal(xmlFile);
-
             return icon;
-
         } catch (JAXBException e) {
             errorLogger.error(e.getCause().getMessage());
             error++;
         }
-        // Todo
         return null;
     }
 
@@ -102,26 +96,25 @@ public class IconValidator {
         }
 
         List<Person> person= icon.getPerson();
-        if( person == null){
+        if(person == null){
             errorLogger.error("Person not found in " + xmlFile.getName() + ".");
             error++;
-
         }
 
         List<Reference> references = icon.getReferences();
-        if ( references != null){
+        if(references != null){
             for (Reference reference : references) {
                 if(!REFERENCES.contains(reference.getDb())){
-                    errorLogger.error("["+ reference.getDb() + "] is not correct in " + xmlFile.getName() + ".");
+                    errorLogger.error("["+ reference.getDb() + "] is not in the list REFERENCE in " + xmlFile.getName() + ".");
                     error++;
                 }
             }
-        } else{
+        } else {
             logger.debug("reference was not found in " + xmlFile.getName() + ".");
         }
 
         List<String> synonyms = icon.getSynonyms();
-        if( synonyms != null) {
+        if(synonyms != null) {
             for (String synonym : synonyms) {
                 if (synonym.equals("")){
                     errorLogger.error("Synonym is missing value in " + xmlFile.getName() + ".");

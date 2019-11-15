@@ -22,9 +22,7 @@ public class Person {
     @XmlValue
     private String name;
 
-
-    public Person() {
-    }
+    public Person() { }
 
     public Person(String role, String orcid, String url, String name) {
         this.role = role;
@@ -64,6 +62,4 @@ public class Person {
     public void setName(String name) {
         this.name = name;
     }
-
-
 }
