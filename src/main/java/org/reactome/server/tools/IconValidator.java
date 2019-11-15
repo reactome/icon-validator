@@ -67,7 +67,7 @@ public class IconValidator {
                 }
             }
         }
-        errorLogger.error( error + " errors are found");
+        errorLogger.error( error + " errors are found.");
     }
 
     private Icon convertXmlToObj(File xmlFile){

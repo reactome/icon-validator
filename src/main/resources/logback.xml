@@ -12,16 +12,16 @@
 
 	<timestamp key="byDayTime" datePattern="ddMMyyyyhhmmss"/>
 	<appender name="FILE" class="ch.qos.logback.core.FileAppender">
-		<file>./validation-${byDayTime}.log</file>
-		<append>true</append>
+		<file>./validation.log</file>
+		<append>false</append>
 		<encoder>
 			<pattern> %-5level - %msg%n</pattern>
 		</encoder>
 	</appender>
 
 	<appender name="WARNING" class="ch.qos.logback.core.FileAppender">
-		<file>./warning-validation-${byDayTime}.log</file>
-		<append>true</append>
+		<file>./warning-validation.log</file>
+		<append>false</append>
 		<encoder>
 			<pattern> %-5level - %msg%n</pattern>
 		</encoder>
