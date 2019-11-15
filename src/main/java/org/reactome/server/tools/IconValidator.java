@@ -18,7 +18,8 @@ import java.util.List;
 
 public class IconValidator {
 
-    private static final Logger logger = LoggerFactory.getLogger(IconValidator.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger("logger");
+    private static final Logger errorLogger = LoggerFactory.getLogger("errorLogger");
 
     private final static List<String> CATEGORIES = new ArrayList<String>(Arrays.asList("arrow", "cell_element",  "cell_type", "compound", "human_tissue", "protein", "receptor", "transporter"));
     private final static List<String> REFERENCES = new ArrayList<String>(Arrays.asList("UNIPROT", "GO", "CHEBI", "ENSEMBL", "CL", "UBERON", "INTERPRO", "MESH", "KEGG", "ENA", "SO", "BTO", "RFAM", "PUBCHEM", "PFAM", "COMPLEXPORTAL", "OMIT"));
@@ -66,6 +67,7 @@ public class IconValidator {
                 }
             }
         }
+        errorLogger.error( error + " errors are found");
     }
 
     private Icon convertXmlToObj(File xmlFile){
@@ -73,16 +75,6 @@ public class IconValidator {
         JAXBContext jaxbContext;
 
         try {
-            /* Icon i = new Icon();
-            List<Person> persons = new ArrayList<Person>();
-            persons.add(new Person("c","aaa",null, "gggg"));
-            persons.add(new Person("a","bbbb",null, "ccccc"));
-            i.setPerson(persons);
-
-            Marshaller jaxb = jaxbContext.createMarshaller();
-            jaxb.marshal(i, new File("icon.xml"));
-            */
-
             jaxbContext = JAXBContext.newInstance(Icon.class);
 
             Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
@@ -92,7 +84,7 @@ public class IconValidator {
             return icon;
 
         } catch (JAXBException e) {
-            logger.error(e.getCause().getMessage());
+            errorLogger.error(e.getCause().getMessage());
             error++;
         }
         // Todo
@@ -101,38 +93,40 @@ public class IconValidator {
 
     private void validateXmlObj(File xmlFile, Icon icon){
 
-        //Todo: split
         List<String> categories = icon.getCategories();
         for (String category : categories) {
             if(!CATEGORIES.contains(category.toLowerCase())){
-                //ERROR
-                // throw new IconValidationException("File BLA BLA - cater is not in the list");
-                //Todo: category is not found in category list ot no items in categories tag
-                logger.warn("category " + category + " is not correct in " + xmlFile.getName() );
+                errorLogger.error("Category [" + category + "] is not in the list CATEGORIES in the " + xmlFile.getName() + "." );
+                error++;
             }
         }
 
         List<Person> person= icon.getPerson();
         if( person == null){
-            logger.info("No person found in " + xmlFile.getName());
+            errorLogger.error("Person not found in " + xmlFile.getName() + ".");
+            error++;
+
         }
 
         List<Reference> references = icon.getReferences();
         if ( references != null){
             for (Reference reference : references) {
                 if(!REFERENCES.contains(reference.getDb())){
-                    logger.warn("reference " + reference.getDb() + " is not correct in " + xmlFile.getName() );
+                    errorLogger.error("["+ reference.getDb() + "] is not correct in " + xmlFile.getName() + ".");
+                    error++;
                 }
             }
         } else{
-            logger.warn("warning: no reference found in " + xmlFile.getName() );
+            logger.debug("reference was not found in " + xmlFile.getName() + ".");
         }
 
         List<String> synonyms = icon.getSynonyms();
         if( synonyms != null) {
             for (String synonym : synonyms) {
-                if (synonym.equals(""))
-                    logger.warn("warning: where are the synonym is missing at <synonym> in " + xmlFile.getName());
+                if (synonym.equals("")){
+                    errorLogger.error("Synonym is missing value in " + xmlFile.getName() + ".");
+                    error++;
+                }
             }
         }
     }

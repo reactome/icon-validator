@@ -10,7 +10,31 @@
 		</encoder>
 	</appender>
 
-	<jmxConfigurator />
+	<timestamp key="byDayTime" datePattern="ddMMyyyyhhmmss"/>
+	<appender name="FILE" class="ch.qos.logback.core.FileAppender">
+		<file>./validation-${byDayTime}.log</file>
+		<append>true</append>
+		<encoder>
+			<pattern> %-5level - %msg%n</pattern>
+		</encoder>
+	</appender>
+
+	<appender name="WARNING" class="ch.qos.logback.core.FileAppender">
+		<file>./warning-validation-${byDayTime}.log</file>
+		<append>true</append>
+		<encoder>
+			<pattern> %-5level - %msg%n</pattern>
+		</encoder>
+	</appender>
+
+	<logger name ="errorLogger" level="ERROR">
+		<appender-ref ref="FILE" />
+	</logger>
+
+	<logger name ="logger" level="INFO">
+		<appender-ref ref="WARNING" />
+	</logger>
+
 	<root level="INFO">
 		<appender-ref ref="STDOUT" />
 	</root>

@@ -12,3 +12,4 @@ ntelliJ idea git ignore
 *.class
 
 *.bin
+*.log
