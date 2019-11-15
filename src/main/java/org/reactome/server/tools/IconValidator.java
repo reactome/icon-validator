@@ -34,7 +34,7 @@ public class IconValidator {
                 "Validates all the icon metadata before it is indexed during data release",
                 new Parameter[] {
                          new FlaggedOption( "directory", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.REQUIRED, 'd', "directory", "The place of icon XML s to import").setList(true).setListSeparator(',')
-                    //   , new FlaggedOption( "out", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.NOT_REQUIRED, 'o', "output", "The full path of the output binary file")
+                       , new FlaggedOption( "out", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.NOT_REQUIRED, 'o', "output", "The full path of the output binary file")
                         , new FlaggedOption( "force", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.NOT_REQUIRED, 'f', "force", "The full path of the output binary file")
                 }
         );
@@ -49,16 +49,16 @@ public class IconValidator {
     private void process(JSAPResult config) {
 
         String directory = config.getString("directory");
-        File dir = new File(directory);
+        File filesInDir = new File(directory);
 
-        File[] listOfAllFiles = dir.listFiles(new FilenameFilter() {
+        File[] xmlFiles = filesInDir.listFiles(new FilenameFilter() {
             public boolean accept(File dir, String name) {
                 return name.endsWith(".xml");
             }
         });
 
-        if (listOfAllFiles != null){
-            for (File file : listOfAllFiles) {
+        if (xmlFiles != null){
+            for (File file : xmlFiles) {
                 if (file.isFile()) {
                     Icon icon = convertXmlToObj(file);
                     if( icon != null){
@@ -70,13 +70,13 @@ public class IconValidator {
         errorLogger.error(error + " errors are found.");
     }
 
-    private Icon convertXmlToObj(File xmlFile){
+    private Icon convertXmlToObj(File file){
 
         JAXBContext jaxbContext;
         try {
             jaxbContext = JAXBContext.newInstance(Icon.class);
             Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-            Icon icon = (Icon) jaxbUnmarshaller.unmarshal(xmlFile);
+            Icon icon = (Icon) jaxbUnmarshaller.unmarshal(file);
             return icon;
         } catch (JAXBException e) {
             errorLogger.error(e.getCause().getMessage());
@@ -90,7 +90,7 @@ public class IconValidator {
         List<String> categories = icon.getCategories();
         for (String category : categories) {
             if(!CATEGORIES.contains(category.toLowerCase())){
-                errorLogger.error("Category [" + category + "] is not in the list CATEGORIES in the " + xmlFile.getName() + "." );
+                errorLogger.error("Category [" + category + "] is not in the list CATEGORIES in the " + xmlFile.getName() + ".");
                 error++;
             }
         }
