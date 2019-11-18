@@ -80,7 +80,7 @@ public class IconValidator {
             Icon icon = (Icon) jaxbUnmarshaller.unmarshal(file);
             return icon;
         } catch (JAXBException e) {
-            errorLogger.error(e.getCause().getMessage());
+            errorLogger.error(e.getCause().getMessage() +  " File: " + file.getName());
             error++;
         }
         return null;
