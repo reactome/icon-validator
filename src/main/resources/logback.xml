@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <configuration scan="true" scanPeriod="3 seconds">
-	<contextName>digest</contextName>
+    <contextName>digest</contextName>
 
-	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-		<encoder>
-			<pattern>
-				 %-5level - %msg%n
-			</pattern>
-		</encoder>
-	</appender>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>
+                %-5level - %msg%n
+            </pattern>
+        </encoder>
+    </appender>
 
-	<timestamp key="byDayTime" datePattern="ddMMyyyyhhmmss"/>
-	<appender name="FILE" class="ch.qos.logback.core.FileAppender">
-		<file>./validation.log</file>
-		<append>false</append>
-		<encoder>
-			<pattern> %-5level - %msg%n</pattern>
-		</encoder>
-	</appender>
+    <timestamp key="byDayTime" datePattern="ddMMyyyyhhmmss"/>
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>./validation.log</file>
+        <append>false</append>
+        <encoder>
+            <pattern>%-5level - %msg%n</pattern>
+        </encoder>
+    </appender>
 
-	<appender name="WARNING" class="ch.qos.logback.core.FileAppender">
-		<file>./warning-validation.log</file>
-		<append>false</append>
-		<encoder>
-			<pattern> %-5level - %msg%n</pattern>
-		</encoder>
-	</appender>
+    <appender name="WARNING" class="ch.qos.logback.core.FileAppender">
+        <file>./warning-validation.log</file>
+        <append>false</append>
+        <encoder>
+            <pattern>%-5level - %msg%n</pattern>
+        </encoder>
+    </appender>
 
-	<logger name ="errorLogger" level="ERROR">
-		<appender-ref ref="FILE" />
-	</logger>
+    <logger name="errorLogger" level="INFO">
+        <appender-ref ref="FILE"/>
+    </logger>
 
-	<logger name ="logger" level="INFO">
-		<appender-ref ref="WARNING" />
-	</logger>
+    <logger name="logger" level="INFO">
+        <appender-ref ref="WARNING"/>
+    </logger>
 
-	<root level="INFO">
-		<appender-ref ref="STDOUT" />
-	</root>
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
 
 </configuration>
