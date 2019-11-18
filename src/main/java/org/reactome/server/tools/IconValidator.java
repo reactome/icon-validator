@@ -25,8 +25,8 @@ public class IconValidator {
     private final static List<String> REFERENCES = new ArrayList<String>(Arrays.asList("UNIPROT", "GO", "CHEBI", "ENSEMBL", "CL", "UBERON", "INTERPRO", "MESH", "KEGG", "ENA", "SO", "BTO", "RFAM", "PUBCHEM", "PFAM", "COMPLEXPORTAL", "OMIT"));
 
     private int error = 0;
+    private int xmlNum = 0;
 
-    // directory = Users/chuqiao/Dev/Icons/LIB
     public static void main(String[] args) throws Exception {
 
         SimpleJSAP jsap = new SimpleJSAP(
@@ -34,8 +34,7 @@ public class IconValidator {
                 "Validates all the icon metadata before it is indexed during data release",
                 new Parameter[] {
                          new FlaggedOption( "directory", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.REQUIRED, 'd', "directory", "The place of icon XML s to import").setList(true).setListSeparator(',')
-                       , new FlaggedOption( "out", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.NOT_REQUIRED, 'o', "output", "The full path of the output binary file")
-                        , new FlaggedOption( "force", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.NOT_REQUIRED, 'f', "force", "The full path of the output binary file")
+                        , new FlaggedOption( "force", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.NOT_REQUIRED, 'f', "force", "force icon validator to execute ")
                 }
         );
 
@@ -43,7 +42,10 @@ public class IconValidator {
 
         if(jsap.messagePrinted()) System.exit( 1 );
 
-        new IconValidator().process(config);
+        IconValidator iv = new IconValidator();
+        iv.process(config);
+        if (iv.error > 0) System.exit(1);
+
     }
 
     private void process(JSAPResult config) {
@@ -59,15 +61,14 @@ public class IconValidator {
 
         if (xmlFiles != null){
             for (File file : xmlFiles) {
-                if (file.isFile()) {
-                    Icon icon = convertXmlToObj(file);
-                    if( icon != null){
-                        validateXmlObj(file, icon);
-                    }
+                xmlNum = xmlFiles.length;
+                Icon icon = convertXmlToObj(file);
+                if( icon != null){
+                    validateXmlObj(file, icon);
                 }
             }
         }
-        errorLogger.error(error + " errors are found.");
+        errorLogger.error(error + " errors are found in " + xmlNum + " XML files");
     }
 
     private Icon convertXmlToObj(File file){
