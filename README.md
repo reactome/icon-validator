@@ -13,7 +13,7 @@ This project is meant to validate icon files before sending them to the server.
     
 #### Git Clone
 ```console
-git clone https://github.com/reactome/experiment-digester.git
+git clone https://github.com/reactome/experiment-digester.git 
 cd experiment-digester
 ```
 

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@SuppressWarnings("ALL")
 public class IconValidator {
 
     private static final Logger logger = LoggerFactory.getLogger("logger");
