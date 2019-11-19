@@ -14,7 +14,7 @@ This project is meant to validate icon files before sending them to the server.
 #### Git Clone
 ```console
 git clone https://github.com/reactome/experiment-digester.git 
-cd experiment-digester
+cd icon validator
 ```
 
 #### Usage
@@ -27,7 +27,7 @@ then start validating files by using the following line:
 
 ```console
 java -jar target/icon-validator-jar-with-dependencies.jar
-      -d path/To/icon/directory
+      -d path/to/icon/directory
 ```
 
 
