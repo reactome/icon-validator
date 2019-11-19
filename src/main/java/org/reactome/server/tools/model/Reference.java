@@ -20,7 +20,8 @@ public class Reference {
     @XmlElement
     private String id;
 
-    public Reference() { }
+    public Reference() {
+    }
 
     public String getDb() {
         return db;

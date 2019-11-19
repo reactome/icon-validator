@@ -11,8 +11,8 @@ import java.util.List;
 @XmlAccessorType(XmlAccessType.FIELD)
 public class Icon {
 
-    @XmlElementWrapper(name="categories")
-    @XmlElement(name="category")
+    @XmlElementWrapper(name = "categories")
+    @XmlElement(name = "category")
     private List<String> categories;
 
     @XmlElement
@@ -27,18 +27,19 @@ public class Icon {
     @XmlElement
     private String info;
 
-    @XmlElementWrapper(name="references")
-    @XmlElement(name="reference")
+    @XmlElementWrapper(name = "references")
+    @XmlElement(name = "reference")
     private List<Reference> references;
 
-    @XmlElementWrapper(name="synonyms")
-    @XmlElement(name="synonym")
+    @XmlElementWrapper(name = "synonyms")
+    @XmlElement(name = "synonym")
     private List<String> synonyms;
 
     @XmlElement
-    private  boolean skip;
+    private boolean skip;
 
-    public Icon() { }
+    public Icon() {
+    }
 
     public Icon(List<String> categories, List<Person> person, String name, String description, String info, List<Reference> references, List<String> synonyms, boolean skip) {
         this.categories = categories;
