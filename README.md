@@ -4,9 +4,9 @@
 
 ## What is the Reactome Icon Validator
 
-Reactome improves the graphical representation of higher-level pathways in the Reactome pathway browser with the idea of [icon library](https://reactome.org/icon-info/icons-guidelines), this project is meant to validate the structure and value of each icon metadata file.
+Reactome improves the graphical representation of higher-level pathways in the Reactome pathway browser with the idea of [icon library](https://reactome.org/icon-info/icons-guidelines), this project is meant to validate the structure and value of each icon XML file.
 
-#### icon xml
+#### icon XML file
 The correct xml file should have the following structure:
 ```html
 <metadata>
@@ -28,10 +28,13 @@ The correct xml file should have the following structure:
     </synonyms>
 </metadata>
 ```
+* {CATEGORY} with one or more of the suggested categories: arrow, cell_element, cell_type, compound, human_tissue, protein, receptor and transporter.
+* {REFERENCE_NAME} for the name of the resource you have used to find this component (e.g.: UNIPROT, GO, CHEBI … ).
+* {SYNONYM} as any synonyms or alternative names your component might be known of.
 
-This validator validates the meaningful value of significant elements, catch the unmatching end-tags and mistaken attribute specifications, it also generates a validation log file in the end to display all errors. It won't cause any problems after sending the icon files to server.
+This validator validates the meaningful value of significant elements like {category}, catch the unmatching end-tags and mistaken attribute specifications, generates a validation log file in the end to display all errors. It won't cause any problems after fixing the errors in the file and then sending them to server.
 
-## Installation & Configuration
+## Installation & Usage
 
 #### Requirements 
     1. Maven 3.X - [Installation Guide](http://maven.apache.org/install.html)
