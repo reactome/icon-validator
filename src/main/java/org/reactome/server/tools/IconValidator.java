@@ -100,7 +100,7 @@ public class IconValidator {
 
         List<Person> person = icon.getPerson();
         if (person == null) {
-            errorLogger.error("Person not found in " + xmlFile.getName() + ".");
+            errorLogger.error("Element person not found in " + xmlFile.getName() + ".");
             error++;
         }
 
@@ -113,14 +113,14 @@ public class IconValidator {
                 }
             }
         } else {
-            logger.debug("reference was not found in " + xmlFile.getName() + ".");
+            logger.debug("Element reference was not found in " + xmlFile.getName() + ".");
         }
 
         List<String> synonyms = icon.getSynonyms();
         if (synonyms != null) {
             for (String synonym : synonyms) {
                 if (synonym.equals("")) {
-                    errorLogger.error("Synonym is missing value in " + xmlFile.getName() + ".");
+                    errorLogger.error("Element \"synonym\" is missing value in " + xmlFile.getName() + ".");
                     error++;
                 }
             }
