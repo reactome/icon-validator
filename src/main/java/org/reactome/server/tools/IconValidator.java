@@ -93,14 +93,14 @@ public class IconValidator {
         List<String> categories = icon.getCategories();
         for (String category : categories) {
             if (!CATEGORIES.contains(category.toLowerCase())) {
-                errorLogger.error("Category [" + category + "] is not in the list CATEGORIES in the " + xmlFile.getName() + ".");
+                errorLogger.error("[" + category + "] at the element \"category\" is not in the list CATEGORIES in the " + xmlFile.getName() + ".");
                 error++;
             }
         }
 
         List<Person> person = icon.getPerson();
         if (person == null) {
-            errorLogger.error("Element person not found in " + xmlFile.getName() + ".");
+            errorLogger.error("Element \"person\" is not found in " + xmlFile.getName() + ".");
             error++;
         }
 
@@ -108,12 +108,12 @@ public class IconValidator {
         if (references != null) {
             for (Reference reference : references) {
                 if (!REFERENCES.contains(reference.getDb())) {
-                    errorLogger.error("[" + reference.getDb() + "] is not in the list REFERENCE in " + xmlFile.getName() + ".");
+                    errorLogger.error("[" + reference.getDb() + "] at element \"reference\" is not in the list REFERENCE in " + xmlFile.getName() + ".");
                     error++;
                 }
             }
         } else {
-            logger.debug("Element reference was not found in " + xmlFile.getName() + ".");
+            logger.debug("Element \"reference\" was not found in " + xmlFile.getName() + ".");
         }
 
         List<String> synonyms = icon.getSynonyms();

@@ -62,7 +62,7 @@ the expected result should be as below:
 ```console
 ERROR - Element "synonym" is missing value in R-ICO-013884.xml.
 ERROR - The element type "description" must be terminated by the matching end-tag "</description>". File: R-ICO-013655.xml
-ERROR - Category [proteoin] is not in the list CATEGORIES in the R-ICO-013736.xml.
+ERROR - [proteoin] at the element "category" is not in the list CATEGORIES in the R-ICO-013736.xml.
 ...
 ```
 
