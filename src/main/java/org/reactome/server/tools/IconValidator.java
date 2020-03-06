@@ -12,9 +12,12 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 import java.io.File;
 import java.io.FilenameFilter;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @SuppressWarnings("ALL")
 public class IconValidator {
@@ -22,8 +25,8 @@ public class IconValidator {
     private static final Logger logger = LoggerFactory.getLogger("logger");
     private static final Logger errorLogger = LoggerFactory.getLogger("errorLogger");
 
-    private final static List<String> CATEGORIES = new ArrayList<String>(Arrays.asList("arrow", "cell_element", "cell_type", "compound", "human_tissue", "protein", "receptor", "transporter"));
-    private final static List<String> REFERENCES = new ArrayList<String>(Arrays.asList("UNIPROT", "GO", "CHEBI", "ENSEMBL", "CL", "UBERON", "INTERPRO", "MESH", "KEGG", "ENA", "SO", "BTO", "RFAM", "PUBCHEM", "PFAM", "COMPLEXPORTAL", "OMIT"));
+    private List<String> CATEGORIES;
+    private List<String> REFERENCES;
 
     private int error = 0;
     private int xmlNum = 0;
@@ -34,8 +37,10 @@ public class IconValidator {
                 IconValidator.class.getName(),
                 "Validates all the icon metadata before it is indexed during data release",
                 new Parameter[]{
-                        new FlaggedOption("directory", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.REQUIRED, 'd', "directory", "The place of icon XML s to import").setList(true).setListSeparator(',')
-                        , new FlaggedOption("force", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.NOT_REQUIRED, 'f', "force", "force icon validator to execute ")
+                          new FlaggedOption("directory",      JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.REQUIRED, 'd', "directory", "The place of icon XML to import").setList(true).setListSeparator(',')
+                        , new FlaggedOption("referencesfile", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.REQUIRED, 'r', "referencesfile", "A file containing references")
+                        , new FlaggedOption("categoriesfile", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.REQUIRED, 'c', "categoriesfile", "A file containing categories")
+                        , new FlaggedOption("force",          JSAP.BOOLEAN_PARSER, "false", JSAP.NOT_REQUIRED, 'f', "force", "<< NOT RECOMMENDED >> Forces icon validator to pass and suppress errors.")
                 }
         );
 
@@ -45,15 +50,18 @@ public class IconValidator {
 
         IconValidator iv = new IconValidator();
         iv.process(config);
-        if (iv.getError() > 0) {
+        if (iv.getError() > 0 && !config.getBoolean("force")) {
             errorLogger.info(iv.getError() + " errors are found in " + iv.getXmlNum() + " XML files.");
             System.exit(1);
         }
     }
 
     private void process(JSAPResult config) {
-
         String directory = config.getString("directory");
+
+        CATEGORIES = readFile(config.getString("categoriesfile"));
+        REFERENCES = readFile(config.getString("referencesfile"));
+
         File filesInDir = new File(directory);
 
         File[] xmlFiles = filesInDir.listFiles(new FilenameFilter() {
@@ -74,7 +82,6 @@ public class IconValidator {
     }
 
     private Icon convertXmlToObj(File file) {
-
         JAXBContext jaxbContext;
         try {
             jaxbContext = JAXBContext.newInstance(Icon.class);
@@ -89,7 +96,6 @@ public class IconValidator {
     }
 
     private void validateXmlObj(File xmlFile, Icon icon) {
-
         List<String> categories = icon.getCategories();
         for (String category : categories) {
             if (!CATEGORIES.contains(category.toLowerCase())) {
@@ -125,6 +131,17 @@ public class IconValidator {
                 }
             }
         }
+    }
+
+    private List<String> readFile(String fileName) {
+        List<String> result = null;
+        try (Stream<String> lines = Files.lines(Paths.get(fileName))) {
+            result = lines.collect(Collectors.toList());
+        } catch (IOException e) {
+            error++;
+            throw new RuntimeException("Cannot read file: " + fileName);
+        }
+        return result;
     }
 
     public int getError() {
