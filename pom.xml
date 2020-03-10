@@ -12,15 +12,6 @@
         <url>http://www.ebi.ac.uk/</url>
     </organization>
 
-    <developers>
-        <developer>
-            <id>ksidiro</id>
-            <name>Kostas Sidiropoulos</name>
-            <email>ksidiro@ebi.ac.uk</email>
-            <organization>http://www.ebi.ac.uk/</organization>
-        </developer>
-    </developers>
-
     <properties>
         <deploymentPath>/</deploymentPath>
         <jsap.version>2.1</jsap.version>

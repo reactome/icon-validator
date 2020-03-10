@@ -56,6 +56,8 @@ then start validating files by using the following line:
 ```console
 java -jar ./target/icon-validator-jar-with-dependencies.jar
       -d path/to/icon/directory
+      -r references.txt
+      -c categories.txt
 ```
 the expected result should be as below:
 
