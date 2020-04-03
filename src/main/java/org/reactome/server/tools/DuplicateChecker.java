@@ -24,10 +24,6 @@ import java.util.stream.Collectors;
 @SuppressWarnings("ALL")
 public class DuplicateChecker {
 
-
-    private static final String DUPLICATE_CSV_FILE = "./potential_duplicate.csv";
-
-
     private int errorDuplicate = 0;
     private int xmlNum = 0;
 
@@ -44,7 +40,9 @@ public class DuplicateChecker {
 
         List<String> duplicatedReferenceId = duplicatedId(xmlFiles);
 
-        BufferedWriter writer = Files.newBufferedWriter(Paths.get(DUPLICATE_CSV_FILE));
+        // write potential duplicate item into a csv file
+        File csvFile = new File("potential_duplicate.csv");
+        BufferedWriter writer = Files.newBufferedWriter(Paths.get(csvFile.getPath()));
         CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader("Name", "Category", "Reference", "File"));
 
         if (xmlFiles != null) {
@@ -56,7 +54,7 @@ public class DuplicateChecker {
                 }
             }
         }
-
+        csvPrinter.flush();
         csvPrinter.close();
     }
 
