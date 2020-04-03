@@ -32,9 +32,6 @@ public class Main {
         // Run duplicateChecker before Iconvalidator, it won't block the application.
         DuplicateChecker dc = new DuplicateChecker();
         dc.process(config);
-        if (dc.getError() > 0 && !config.getBoolean("force")) {
-            duplicateLogger.info(dc.getError() + " potential duplicates are found in " + dc.getXmlNum() + " XML files.");
-        }
 
         IconValidator iv = new IconValidator();
         iv.process(config);
