@@ -1,16 +1,20 @@
 package org.reactome.server.tools;
 
 import com.martiansoftware.jsap.JSAPResult;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import org.reactome.server.tools.model.Icon;
 import org.reactome.server.tools.model.Reference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -20,12 +24,14 @@ import java.util.stream.Collectors;
 @SuppressWarnings("ALL")
 public class DuplicateChecker {
 
-    private static final Logger duplicateLogger = LoggerFactory.getLogger("duplicateLogger");
+
+    private static final String DUPLICATE_CSV_FILE = "./potential_duplicate.csv";
+
 
     private int errorDuplicate = 0;
     private int xmlNum = 0;
 
-    public void process(JSAPResult config) {
+    public void process(JSAPResult config) throws IOException {
         String directory = config.getString("directory");
 
         File filesInDir = new File(directory);
@@ -38,18 +44,20 @@ public class DuplicateChecker {
 
         List<String> duplicatedReferenceId = duplicatedId(xmlFiles);
 
-        //header in duplication.log
-        duplicateLogger.info("Name, Category, Reference ID, File");
+        BufferedWriter writer = Files.newBufferedWriter(Paths.get(DUPLICATE_CSV_FILE));
+        CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader("Name", "Category", "Reference", "File"));
 
         if (xmlFiles != null) {
             for (File file : xmlFiles) {
                 xmlNum = xmlFiles.length;
                 Icon icon = convertXmlToObj(file);
                 if (icon != null) {
-                    findDuplicated(file, icon, duplicatedReferenceId);
+                    findDuplicated(file, icon, duplicatedReferenceId, csvPrinter);
                 }
             }
         }
+
+        csvPrinter.close();
     }
 
     private Icon convertXmlToObj(File file) {
@@ -60,20 +68,18 @@ public class DuplicateChecker {
             Icon icon = (Icon) jaxbUnmarshaller.unmarshal(file);
             return icon;
         } catch (JAXBException e) {
-            duplicateLogger.error(e.getCause().getMessage() + " File: " + file.getName());
-            errorDuplicate++;
         }
         return null;
     }
 
-    private void findDuplicated(File xmlFile, Icon icon, List duplicated) {
+    private void findDuplicated(File xmlFile, Icon icon, List duplicated, CSVPrinter csvPrinter) throws IOException {
 
         List<Reference> references = icon.getReferences();
+
         if (references != null) {
             for (Reference reference : references) {
                 if (duplicated.contains(reference.getId())) {
-                    duplicateLogger.info(icon.getName() + ", " + icon.getCategories() + ", " + reference.getId() + ", " + xmlFile.getName());
-                    errorDuplicate++;
+                    csvPrinter.printRecord(icon.getName(), icon.getCategories().toString().replace("[", "").replace("]", ""), reference.getId(), xmlFile.getName());
                 }
             }
         }
