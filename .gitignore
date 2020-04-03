@@ -13,3 +13,4 @@ ntelliJ idea git ignore
 
 *.bin
 *.log
+*.csv
