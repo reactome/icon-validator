@@ -1,6 +1,6 @@
 package org.reactome.server.tools;
 
-import com.martiansoftware.jsap.*;
+import com.martiansoftware.jsap.JSAPResult;
 import org.reactome.server.tools.model.Icon;
 import org.reactome.server.tools.model.Person;
 import org.reactome.server.tools.model.Reference;
@@ -31,32 +31,7 @@ public class IconValidator {
     private int error = 0;
     private int xmlNum = 0;
 
-    public static void main(String[] args) throws Exception {
-
-        SimpleJSAP jsap = new SimpleJSAP(
-                IconValidator.class.getName(),
-                "Validates all the icon metadata before it is indexed during data release",
-                new Parameter[]{
-                          new FlaggedOption("directory",      JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.REQUIRED, 'd', "directory", "The place of icon XML to import").setList(true).setListSeparator(',')
-                        , new FlaggedOption("referencesfile", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.REQUIRED, 'r', "referencesfile", "A file containing references")
-                        , new FlaggedOption("categoriesfile", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.REQUIRED, 'c', "categoriesfile", "A file containing categories")
-                        , new FlaggedOption("force",          JSAP.BOOLEAN_PARSER, "false", JSAP.NOT_REQUIRED, 'f', "force", "<< NOT RECOMMENDED >> Forces icon validator to pass and suppress errors.")
-                }
-        );
-
-        JSAPResult config = jsap.parse(args);
-
-        if (jsap.messagePrinted()) System.exit(1);
-
-        IconValidator iv = new IconValidator();
-        iv.process(config);
-        if (iv.getError() > 0 && !config.getBoolean("force")) {
-            errorLogger.info(iv.getError() + " errors are found in " + iv.getXmlNum() + " XML files.");
-            System.exit(1);
-        }
-    }
-
-    private void process(JSAPResult config) {
+    public void process(JSAPResult config) {
         String directory = config.getString("directory");
 
         CATEGORIES = readFile(config.getString("categoriesfile"));
