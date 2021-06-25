@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-@SuppressWarnings("ALL")
+@SuppressWarnings("unused")
 public class Main {
 
     private static final Logger errorLogger = LoggerFactory.getLogger("errorLogger");

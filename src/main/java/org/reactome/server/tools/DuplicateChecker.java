@@ -11,7 +11,6 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -21,7 +20,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 
-@SuppressWarnings("ALL")
+@SuppressWarnings("unused")
 public class DuplicateChecker {
 
     private int errorDuplicate = 0;
@@ -32,11 +31,7 @@ public class DuplicateChecker {
 
         File filesInDir = new File(directory);
 
-        File[] xmlFiles = filesInDir.listFiles(new FilenameFilter() {
-            public boolean accept(File dir, String name) {
-                return name.endsWith(".xml");
-            }
-        });
+        File[] xmlFiles = filesInDir.listFiles((dir, name) -> name.endsWith(".xml"));
 
         List<String> duplicatedReferenceId = duplicatedId(xmlFiles);
 
@@ -63,14 +58,13 @@ public class DuplicateChecker {
         try {
             jaxbContext = JAXBContext.newInstance(Icon.class);
             Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-            Icon icon = (Icon) jaxbUnmarshaller.unmarshal(file);
-            return icon;
-        } catch (JAXBException e) {
+            return (Icon) jaxbUnmarshaller.unmarshal(file);
+        } catch (JAXBException ignored) {
         }
         return null;
     }
 
-    private void findDuplicated(File xmlFile, Icon icon, List duplicated, CSVPrinter csvPrinter) throws IOException {
+    private void findDuplicated(File xmlFile, Icon icon, List<String> duplicated, CSVPrinter csvPrinter) throws IOException {
 
         List<Reference> references = icon.getReferences();
 
@@ -96,12 +90,11 @@ public class DuplicateChecker {
             }
         }
         //get duplicate items
-        List<String> duplicated = referenceId.stream()
+
+        return referenceId.stream()
                 .filter(e -> Collections.frequency(referenceId, e) > 1)
                 .distinct()
                 .collect(Collectors.toList());
-
-        return duplicated;
     }
 
     public int getError() {

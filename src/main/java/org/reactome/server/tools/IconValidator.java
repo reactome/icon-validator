@@ -11,7 +11,6 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -19,7 +18,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@SuppressWarnings("ALL")
+@SuppressWarnings("unused")
 public class IconValidator {
 
     private static final Logger logger = LoggerFactory.getLogger("logger");
@@ -39,11 +38,7 @@ public class IconValidator {
 
         File filesInDir = new File(directory);
 
-        File[] xmlFiles = filesInDir.listFiles(new FilenameFilter() {
-            public boolean accept(File dir, String name) {
-                return name.endsWith(".xml");
-            }
-        });
+        File[] xmlFiles = filesInDir.listFiles((dir, name) -> name.endsWith(".xml"));
 
         if (xmlFiles != null) {
             for (File file : xmlFiles) {
@@ -61,8 +56,7 @@ public class IconValidator {
         try {
             jaxbContext = JAXBContext.newInstance(Icon.class);
             Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-            Icon icon = (Icon) jaxbUnmarshaller.unmarshal(file);
-            return icon;
+            return (Icon) jaxbUnmarshaller.unmarshal(file);
         } catch (JAXBException e) {
             errorLogger.error(e.getCause().getMessage() + " File: " + file.getName());
             error++;
@@ -109,7 +103,7 @@ public class IconValidator {
     }
 
     private List<String> readFile(String fileName) {
-        List<String> result = null;
+        List<String> result;
         try (Stream<String> lines = Files.lines(Paths.get(fileName))) {
             result = lines.collect(Collectors.toList());
         } catch (IOException e) {
