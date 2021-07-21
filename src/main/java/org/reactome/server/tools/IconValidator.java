@@ -1,6 +1,7 @@
 package org.reactome.server.tools;
 
 import com.martiansoftware.jsap.JSAPResult;
+import org.apache.commons.lang3.StringUtils;
 import org.reactome.server.tools.model.Icon;
 import org.reactome.server.tools.model.Person;
 import org.reactome.server.tools.model.Reference;
@@ -12,42 +13,69 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-@SuppressWarnings("unused")
-public class IconValidator {
+import static java.util.stream.Collectors.toList;
 
+@SuppressWarnings("unused")
+public class IconValidator implements Checker {
+    private static final int QUERY_INTERVAL = 100;
     private static final Logger logger = LoggerFactory.getLogger("logger");
     private static final Logger errorLogger = LoggerFactory.getLogger("errorLogger");
-
-    private List<String> CATEGORIES;
-    private List<String> REFERENCES;
-
-    private int error = 0;
+    private static final HttpClient httpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_2)
+            .followRedirects(HttpClient.Redirect.ALWAYS)
+            .build();
+    private final HttpResponse.BodyHandler<?> bodyHandler;
+    private final List<String> CATEGORIES;
+    private final List<String> REFERENCES;
+    private final boolean iconNameCheck;
+    private final boolean checkReferences;
+    private final String directory;
+    private final AtomicInteger error = new AtomicInteger(0);
+    private final AtomicInteger countRef = new AtomicInteger(0);
     private int xmlNum = 0;
 
-    public void process(JSAPResult config) {
-        String directory = config.getString("directory");
+    public IconValidator(JSAPResult config) {
+        this.directory = config.getString("directory");
+        this.checkReferences = config.getBoolean("checkReferences");
+        this.iconNameCheck = config.getBoolean("iconNameCheck");
+        this.bodyHandler = iconNameCheck ? HttpResponse.BodyHandlers.ofString() : HttpResponse.BodyHandlers.discarding();
+        this.CATEGORIES = readFile(config.getString("categoriesfile"));
+        this.REFERENCES = readFile(config.getString("referencesfile"));
+    }
 
-        CATEGORIES = readFile(config.getString("categoriesfile"));
-        REFERENCES = readFile(config.getString("referencesfile"));
+    @Override
+    public void process() {
 
         File filesInDir = new File(directory);
 
         File[] xmlFiles = filesInDir.listFiles((dir, name) -> name.endsWith(".xml"));
 
         if (xmlFiles != null) {
-            for (File file : xmlFiles) {
-                xmlNum = xmlFiles.length;
-                Icon icon = convertXmlToObj(file);
-                if (icon != null) {
-                    validateXmlObj(file, icon);
-                }
-            }
+            xmlNum = xmlFiles.length;
+            Arrays.stream(xmlFiles)
+                    .parallel()
+                    .forEach(file -> {
+                        Icon icon = convertXmlToObj(file);
+                        if (icon != null) {
+                            validateXmlObj(file, icon);
+                        }
+                    });
         }
     }
 
@@ -59,24 +87,25 @@ public class IconValidator {
             return (Icon) jaxbUnmarshaller.unmarshal(file);
         } catch (JAXBException e) {
             errorLogger.error(e.getCause().getMessage() + " File: " + file.getName());
-            error++;
+            error.incrementAndGet();
         }
         return null;
     }
 
     private void validateXmlObj(File xmlFile, Icon icon) {
+        System.out.println(countRef.incrementAndGet() + " / " + xmlNum + " xml files analysed");
         List<String> categories = icon.getCategories();
         for (String category : categories) {
             if (!CATEGORIES.contains(category.toLowerCase())) {
                 errorLogger.error("[" + category + "] at the element \"category\" is not in the list CATEGORIES in the " + xmlFile.getName() + ".");
-                error++;
+                error.incrementAndGet();
             }
         }
 
         List<Person> person = icon.getPerson();
         if (person == null) {
             errorLogger.error("Element \"person\" is not found in " + xmlFile.getName() + ".");
-            error++;
+            error.incrementAndGet();
         }
 
         List<Reference> references = icon.getReferences();
@@ -84,7 +113,9 @@ public class IconValidator {
             for (Reference reference : references) {
                 if (!REFERENCES.contains(reference.getDb())) {
                     errorLogger.error("[" + reference.getDb() + "] at element \"reference\" is not in the list REFERENCE in " + xmlFile.getName() + ".");
-                    error++;
+                    error.incrementAndGet();
+                } else if (checkReferences && !checkReference(reference, icon, xmlFile.getName(), 0)) {
+                    error.incrementAndGet();
                 }
             }
         } else {
@@ -96,36 +127,103 @@ public class IconValidator {
             for (String synonym : synonyms) {
                 if (synonym.equals("")) {
                     errorLogger.error("Element \"synonym\" is missing value in " + xmlFile.getName() + ".");
-                    error++;
+                    error.incrementAndGet();
                 }
             }
         }
     }
 
+    private static final Pattern prefixPattern = Pattern.compile("^[A-Za-z.]+:");
+
+    private static final Map<String, List<String>> identifiersPrefixes = Map.of(
+            "ENA", List.of("ena.embl"),
+            "PUBCHEM", List.of("pubchem.compound", "pubchem.substance", "pubchem.bioassay"),
+            "IUPHAR", List.of("iuphar.family", "iuphar.ligand", "iuphar.receptor"),
+            "NCBI", List.of("ncbigene", "ncbiprotein")
+    );
+
+    private static final Map<String, Function<String, String>> idBuilders = Map.of(
+            "ncbiprotein", id -> id.replace(':', '_')
+    );
+
+    private static final Map<String, Function<Reference, List<String>>> dbToUrlBuilders = Map.of(
+            "KEGG", reference -> List.of("http://rest.kegg.jp/get/" + reference.getId()),
+            "OPL", reference -> List.of("https://www.ebi.ac.uk/ols/api/ontologies/opl/terms?iri=http://purl.obolibrary.org/obo/" + reference.getId().replace(':', '_')),
+            "UNIPROT", reference -> List.of("https://www.ebi.ac.uk/proteins/api/proteins/" + reference.getId()),
+            "DEFAULT", reference -> identifiersPrefixes
+                    .getOrDefault(reference.getDb(), List.of(reference.getDb()))
+                    .stream()
+                    .map(prefix -> "https://identifiers.org/" + prefix + ":" +
+                            idBuilders.getOrDefault(prefix, id -> prefixPattern.matcher(id).replaceFirst("")).apply(reference.getId())
+                    ).collect(toList())
+    );
+
+    private Instant prevQueryTime = Instant.now();
+
+    @SuppressWarnings("unchecked")
+    private boolean checkReference(Reference reference, Icon icon, String iconId, int recursionLevel) {
+        boolean isFinalTry = recursionLevel > 2;
+        String errorMessage;
+        HttpRequest request;
+        HttpResponse<?> response;
+        List<String> urls = dbToUrlBuilders.getOrDefault(reference.getDb(), dbToUrlBuilders.get("DEFAULT")).apply(reference);
+
+        try {
+            for (String url : urls) {
+                if (Duration.between(prevQueryTime, Instant.now()).toMillis() < QUERY_INTERVAL) {
+                    Thread.sleep(QUERY_INTERVAL);
+                }
+
+                prevQueryTime = Instant.now();
+                request = HttpRequest.newBuilder(URI.create(url)).build();
+                response = httpClient.send(request, bodyHandler);
+                if (response.statusCode() / 100 == 2) {
+                    if (iconNameCheck && !StringUtils.containsIgnoreCase(((HttpResponse<String>) response).body(), icon.getName())) {
+                        errorLogger.warn("{} : {} can be found at {}, but the result do not contains {}",
+                                iconId, reference, response.uri(), icon.getName());
+                    }
+                    return true;
+                }
+            }
+            errorMessage = String.format("%s : %s cannot be found at the following urls %s. This might be due to a non supported database. Please contact eragueneau@ebi.ac.uk in such case",
+                    iconId, reference, urls);
+        } catch (IOException | InterruptedException e) {
+            errorMessage = String.format("Checking %s : %s threw %s while testing following urls : %s", iconId, reference, e.getMessage(), urls);
+            e.printStackTrace();
+        }
+
+        if (!isFinalTry) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ignored) {
+            }
+            System.out.format("%s : %s check failed on its attempt #%d\n", iconId, reference, recursionLevel + 1);
+            return checkReference(reference, icon, iconId, recursionLevel + 1);
+        } else {
+            errorLogger.error(errorMessage);
+            return false;
+        }
+    }
+
+
     private List<String> readFile(String fileName) {
         List<String> result;
         try (Stream<String> lines = Files.lines(Paths.get(fileName))) {
-            result = lines.collect(Collectors.toList());
+            result = lines.collect(toList());
         } catch (IOException e) {
-            error++;
+            error.incrementAndGet();
             throw new RuntimeException("Cannot read file: " + fileName);
         }
         return result;
     }
 
-    public int getError() {
-        return error;
+    @Override
+    public int getFailedChecks() {
+        return error.get();
     }
 
-    public void setError(int error) {
-        this.error = error;
-    }
-
-    public int getXmlNum() {
+    @Override
+    public int getTotalChecks() {
         return xmlNum;
-    }
-
-    public void setXmlNum(int xmlNum) {
-        this.xmlNum = xmlNum;
     }
 }

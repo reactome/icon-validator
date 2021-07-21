@@ -38,4 +38,12 @@ public class Reference {
     public void setId(String id) {
         this.id = id;
     }
+
+    @Override
+    public String toString() {
+        return "Reference{" +
+                "db='" + db + '\'' +
+                ", id='" + id + '\'' +
+                '}';
+    }
 }
