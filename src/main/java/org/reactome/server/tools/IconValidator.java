@@ -1,10 +1,12 @@
 package org.reactome.server.tools;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.martiansoftware.jsap.JSAPResult;
 import org.apache.commons.lang3.StringUtils;
 import org.reactome.server.tools.model.Icon;
 import org.reactome.server.tools.model.Person;
 import org.reactome.server.tools.model.Reference;
+import org.reactome.server.tools.model.Resolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,9 +155,21 @@ public class IconValidator implements Checker {
             "DEFAULT", reference -> identifiersPrefixes
                     .getOrDefault(reference.getDb(), List.of(reference.getDb()))
                     .stream()
-                    .map(prefix -> "https://identifiers.org/" + prefix + ":" +
+                    .map(prefix -> "https://resolver.api.identifiers.org/" + prefix + ":" +
                             idBuilders.getOrDefault(prefix, id -> prefixPattern.matcher(id).replaceFirst("")).apply(reference.getId())
-                    ).collect(toList())
+                    )
+                    .flatMap(resolverURL -> {
+                        HttpRequest request = HttpRequest.newBuilder(URI.create(resolverURL)).build();
+                        try {
+                            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                            Resolver resolver = new ObjectMapper().readValue(response.body(), Resolver.class);
+                            return resolver.payload.resolvedResources.stream().map(resolvedResource -> resolvedResource.compactIdentifierResolvedUrl);
+                        } catch (IOException | InterruptedException e) {
+                            e.printStackTrace();
+                            return Stream.empty();
+                        }
+                    })
+                    .collect(toList())
     );
 
     private Instant prevQueryTime = Instant.now();
