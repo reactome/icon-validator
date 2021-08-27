@@ -3,10 +3,11 @@ package org.reactome.server.tools;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.martiansoftware.jsap.JSAPResult;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.reactome.server.tools.model.Icon;
 import org.reactome.server.tools.model.Person;
 import org.reactome.server.tools.model.Reference;
-import org.reactome.server.tools.model.Resolver;
+import org.reactome.server.tools.model.query.Resolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,12 +24,12 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -42,6 +43,7 @@ public class IconValidator implements Checker {
             .version(HttpClient.Version.HTTP_2)
             .followRedirects(HttpClient.Redirect.ALWAYS)
             .build();
+    private final Map<String, List<Pair<Icon, String>>> uniprotReferences = new ConcurrentHashMap<>();
     private final HttpResponse.BodyHandler<?> bodyHandler;
     private final List<String> CATEGORIES;
     private final List<String> REFERENCES;
@@ -78,6 +80,7 @@ public class IconValidator implements Checker {
                             validateXmlObj(file, icon);
                         }
                     });
+            processBatchChecking();
         }
     }
 
@@ -151,7 +154,6 @@ public class IconValidator implements Checker {
     private static final Map<String, Function<Reference, List<String>>> dbToUrlBuilders = Map.of(
             "KEGG", reference -> List.of("http://rest.kegg.jp/get/" + reference.getId()),
             "OPL", reference -> List.of("https://www.ebi.ac.uk/ols/api/ontologies/opl/terms?iri=http://purl.obolibrary.org/obo/" + reference.getId().replace(':', '_')),
-            "UNIPROT", reference -> List.of("https://www.ebi.ac.uk/proteins/api/proteins/" + reference.getId()),
             "DEFAULT", reference -> identifiersPrefixes
                     .getOrDefault(reference.getDb(), List.of(reference.getDb()))
                     .stream()
@@ -176,6 +178,11 @@ public class IconValidator implements Checker {
 
     @SuppressWarnings("unchecked")
     private boolean checkReference(Reference reference, Icon icon, String iconId, int recursionLevel) {
+        if (reference.getDb().equals("UNIPROT")) {
+            uniprotReferences.computeIfAbsent(reference.getId(), id -> new ArrayList<>()).add(Pair.of(icon, iconId));
+            return true;
+        }
+
         boolean isFinalTry = recursionLevel > 2;
         String errorMessage;
         HttpRequest request;
@@ -217,6 +224,30 @@ public class IconValidator implements Checker {
             errorLogger.error(errorMessage);
             return false;
         }
+    }
+
+    private void processBatchChecking() {
+        Utils.slice(uniprotReferences.keySet(), 300).forEach(refBatch -> {
+            Map<String, Object> postData = Map.of(
+                    "query", String.join(" ", refBatch),
+                    "from", "ACC+ID",
+                    "to", "ACC",
+                    "format", "tab"
+            );
+
+            Set<String> correctAccessions = Arrays.stream(Utils.queryUniprot(postData).split("\n"))
+                    .skip(1) // Skip header
+                    .map(line -> line.split("\t")[0])
+                    .collect(Collectors.toSet());
+            for (String queriedAccession : refBatch) {
+                if (correctAccessions.contains(queriedAccession)) continue;
+                for (Pair<Icon, String> iconAndName : uniprotReferences.get(queriedAccession)) {
+                    error.incrementAndGet();
+                    errorLogger.error("{} : {} doesn't seem to exist",
+                            iconAndName.getRight(), new Reference("UNIPROT", queriedAccession));
+                }
+            }
+        });
     }
 
 
