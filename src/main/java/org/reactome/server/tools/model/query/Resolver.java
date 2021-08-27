@@ -1,4 +1,4 @@
-package org.reactome.server.tools.model;
+package org.reactome.server.tools.model.query;
 
 import lombok.Builder;
 import lombok.ToString;
