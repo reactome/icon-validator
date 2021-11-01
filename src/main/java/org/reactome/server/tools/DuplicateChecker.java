@@ -5,13 +5,14 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.reactome.server.tools.model.Icon;
 import org.reactome.server.tools.model.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -21,41 +22,50 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 
-@SuppressWarnings("ALL")
-public class DuplicateChecker {
+@SuppressWarnings("unused")
+public class DuplicateChecker implements Checker {
+    private static final Logger errorLogger = LoggerFactory.getLogger("errorLogger");
+    private final JSAPResult config;
+
+    public DuplicateChecker(JSAPResult config) {
+        this.config = config;
+    }
 
     private int errorDuplicate = 0;
     private int xmlNum = 0;
 
-    public void process(JSAPResult config) throws IOException {
+    @Override
+    public void process() {
         String directory = config.getString("directory");
 
         File filesInDir = new File(directory);
 
-        File[] xmlFiles = filesInDir.listFiles(new FilenameFilter() {
-            public boolean accept(File dir, String name) {
-                return name.endsWith(".xml");
-            }
-        });
+        File[] xmlFiles = filesInDir.listFiles((dir, name) -> name.endsWith(".xml"));
 
         List<String> duplicatedReferenceId = duplicatedId(xmlFiles);
 
-        // write potential duplicate item into a csv file
-        File csvFile = new File("potential_duplicate.csv");
-        BufferedWriter writer = Files.newBufferedWriter(Paths.get(csvFile.getPath()));
-        CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader("Name", "Category", "Reference", "File"));
+        try {
+            // write potential duplicate item into a csv file
+            File csvFile = new File("potential_duplicate.csv");
+            BufferedWriter writer = Files.newBufferedWriter(Paths.get(csvFile.getPath()));
+            CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader("Name", "Category", "Reference", "File"));
 
-        if (xmlFiles != null) {
-            for (File file : xmlFiles) {
-                xmlNum = xmlFiles.length;
-                Icon icon = convertXmlToObj(file);
-                if (icon != null) {
-                    findDuplicated(file, icon, duplicatedReferenceId, csvPrinter);
+            if (xmlFiles != null) {
+                for (File file : xmlFiles) {
+                    xmlNum = xmlFiles.length;
+                    Icon icon = convertXmlToObj(file);
+                    if (icon != null) {
+                        findDuplicated(file, icon, duplicatedReferenceId, csvPrinter);
+                    }
                 }
             }
+            csvPrinter.flush();
+            csvPrinter.close();
+        } catch (IOException e) {
+            errorLogger.error("Could not write potential_duplicate.csv");
+            e.printStackTrace();
         }
-        csvPrinter.flush();
-        csvPrinter.close();
+
     }
 
     private Icon convertXmlToObj(File file) {
@@ -63,14 +73,13 @@ public class DuplicateChecker {
         try {
             jaxbContext = JAXBContext.newInstance(Icon.class);
             Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-            Icon icon = (Icon) jaxbUnmarshaller.unmarshal(file);
-            return icon;
-        } catch (JAXBException e) {
+            return (Icon) jaxbUnmarshaller.unmarshal(file);
+        } catch (JAXBException ignored) {
         }
         return null;
     }
 
-    private void findDuplicated(File xmlFile, Icon icon, List duplicated, CSVPrinter csvPrinter) throws IOException {
+    private void findDuplicated(File xmlFile, Icon icon, List<String> duplicated, CSVPrinter csvPrinter) throws IOException {
 
         List<Reference> references = icon.getReferences();
 
@@ -96,27 +105,20 @@ public class DuplicateChecker {
             }
         }
         //get duplicate items
-        List<String> duplicated = referenceId.stream()
+
+        return referenceId.stream()
                 .filter(e -> Collections.frequency(referenceId, e) > 1)
                 .distinct()
                 .collect(Collectors.toList());
-
-        return duplicated;
     }
 
-    public int getError() {
+    @Override
+    public int getFailedChecks() {
         return errorDuplicate;
     }
 
-    public void setError(int errorDuplicate) {
-        this.errorDuplicate = errorDuplicate;
-    }
-
-    public int getXmlNum() {
+    @Override
+    public int getTotalChecks() {
         return xmlNum;
-    }
-
-    public void setXmlNum(int xmlNum) {
-        this.xmlNum = xmlNum;
     }
 }
