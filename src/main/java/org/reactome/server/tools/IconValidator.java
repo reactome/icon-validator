@@ -191,8 +191,8 @@ public class IconValidator implements Checker {
         HttpResponse<?> response;
         List<String> urls = dbToUrlBuilders.getOrDefault(reference.getDb(), dbToUrlBuilders.get("DEFAULT")).apply(reference);
 
-        try {
-            for (String url : urls) {
+        for (String url : urls) {
+            try {
                 if (Duration.between(prevQueryTime, Instant.now()).toMillis() < QUERY_INTERVAL) {
                     Thread.sleep(QUERY_INTERVAL);
                 }
@@ -207,13 +207,14 @@ public class IconValidator implements Checker {
                     }
                     return true;
                 }
+            } catch (IOException | InterruptedException e) {
+                errorLogger.warn(String.format("Checking %s : %s threw %s while testing following url : %s", iconId, reference, e.getMessage(), url));
+                e.printStackTrace();
             }
-            errorMessage = String.format("%s : %s cannot be found at the following urls %s. This might be due to a non supported database. Please contact eragueneau@ebi.ac.uk in such case",
-                    iconId, reference, urls);
-        } catch (IOException | InterruptedException e) {
-            errorMessage = String.format("Checking %s : %s threw %s while testing following urls : %s", iconId, reference, e.getMessage(), urls);
-            e.printStackTrace();
         }
+        errorMessage = String.format("%s : %s cannot be found at the following urls %s. This might be due to a non supported database. Please contact eragueneau@ebi.ac.uk in such case",
+                iconId, reference, urls);
+
 
         if (!isFinalTry) {
             try {
