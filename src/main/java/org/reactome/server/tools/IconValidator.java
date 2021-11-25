@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -42,6 +43,7 @@ public class IconValidator implements Checker {
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_2)
             .followRedirects(HttpClient.Redirect.ALWAYS)
+            .connectTimeout(Duration.of(10, ChronoUnit.SECONDS))
             .build();
     private final Map<String, List<Pair<Icon, String>>> uniprotReferences = new ConcurrentHashMap<>();
     private final HttpResponse.BodyHandler<?> bodyHandler;
