@@ -227,27 +227,15 @@ public class IconValidator implements Checker {
     }
 
     private void processBatchChecking() {
-        Utils.slice(uniprotReferences.keySet(), 300).forEach(refBatch -> {
-            Map<String, Object> postData = Map.of(
-                    "query", String.join(" ", refBatch),
-                    "from", "ACC+ID",
-                    "to", "ACC",
-                    "format", "tab"
-            );
-
-            Set<String> correctAccessions = Arrays.stream(Utils.queryUniprot(postData).split("\n"))
-                    .skip(1) // Skip header
-                    .map(line -> line.split("\t")[0])
-                    .collect(Collectors.toSet());
-            for (String queriedAccession : refBatch) {
-                if (correctAccessions.contains(queriedAccession)) continue;
-                for (Pair<Icon, String> iconAndName : uniprotReferences.get(queriedAccession)) {
-                    error.incrementAndGet();
-                    errorLogger.error("{} : {} doesn't seem to exist",
-                            iconAndName.getRight(), new Reference("UNIPROT", queriedAccession));
-                }
+        Set<String> correctAccessions = Utils.queryUniprot(uniprotReferences.keySet());
+        for (String queriedAccession : uniprotReferences.keySet()) {
+            if (correctAccessions.contains(queriedAccession)) continue;
+            for (Pair<Icon, String> iconAndName : uniprotReferences.get(queriedAccession)) {
+                error.incrementAndGet();
+                errorLogger.error("{} : {} doesn't seem to exist",
+                        iconAndName.getRight(), new Reference("UNIPROT", queriedAccession));
             }
-        });
+        }
     }
 
 
