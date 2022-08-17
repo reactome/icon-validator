@@ -30,7 +30,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -41,7 +40,7 @@ public class IconValidator implements Checker {
     private static final Logger logger = LoggerFactory.getLogger("logger");
     private static final Logger errorLogger = LoggerFactory.getLogger("errorLogger");
     private static final HttpClient httpClient = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_2)
+            .version(HttpClient.Version.HTTP_1_1)
             .followRedirects(HttpClient.Redirect.ALWAYS)
             .connectTimeout(Duration.of(10, ChronoUnit.SECONDS))
             .build();
