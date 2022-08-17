@@ -86,11 +86,13 @@ public class Utils {
             IDMappingSubmission jobResponse = postRequest("https://rest.uniprot.org/idmapping/run", postData, IDMappingSubmission.class);
             String jobId = jobResponse.jobId;
             boolean onGoing = true;
+            int waitingTime = 5000;
             while (onGoing) {
-                Thread.sleep(2000);
+                Thread.sleep(waitingTime);
                 HttpResponse<String> statusResponse = getRequest("https://rest.uniprot.org/idmapping/status/" + jobId);
                 onGoing = statusResponse.statusCode() != 303;
-                if (String.valueOf(statusResponse.statusCode()).charAt(0) == '4')
+                if (statusResponse.statusCode() == 429) waitingTime += 1000;
+                else if (String.valueOf(statusResponse.statusCode()).charAt(0) == '4')
                     throw new RuntimeException("ID Mapping job failed");
             }
 
