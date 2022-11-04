@@ -143,7 +143,9 @@ public class IconValidator implements Checker {
 
     private static final Map<String, List<String>> identifiersPrefixes = Map.of(
             "ENA", List.of("ena.embl"),
-            "PUBCHEM", List.of("pubchem.compound", "pubchem.substance", "pubchem.bioassay"),
+            "PUBCHEM", List.of("pubchem.compound"),
+            "PUBCHEM-BIOASSAY", List.of("pubchem.bioassay"),
+            "PUBCHEM-SUBSTANCES", List.of("pubchem.substances"),
             "IUPHAR", List.of("iuphar.family", "iuphar.ligand", "iuphar.receptor"),
             "NCBI", List.of("ncbigene", "ncbiprotein")
     );
