@@ -145,7 +145,7 @@ public class IconValidator implements Checker {
             "ENA", List.of("ena.embl"),
             "PUBCHEM", List.of("pubchem.compound"),
             "PUBCHEM-BIOASSAY", List.of("pubchem.bioassay"),
-            "PUBCHEM-SUBSTANCES", List.of("pubchem.substances"),
+            "PUBCHEM-SUBSTANCE", List.of("pubchem.substances"),
             "IUPHAR", List.of("iuphar.family", "iuphar.ligand", "iuphar.receptor"),
             "NCBI", List.of("ncbigene", "ncbiprotein")
     );
