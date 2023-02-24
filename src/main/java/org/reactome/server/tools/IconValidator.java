@@ -155,6 +155,7 @@ public class IconValidator implements Checker {
     );
 
     private static final Map<String, Function<Reference, List<String>>> dbToUrlBuilders = Map.of(
+            "UNIPROT-T", reference -> List.of("https://www.uniprot.org/taxonomy/" + reference.getId()),
             "KEGG", reference -> List.of("http://rest.kegg.jp/get/" + reference.getId()),
             "OPL", reference -> List.of("https://www.ebi.ac.uk/ols/api/ontologies/opl/terms?iri=http://purl.obolibrary.org/obo/" + reference.getId().replace(':', '_')),
             "DEFAULT", reference -> identifiersPrefixes
