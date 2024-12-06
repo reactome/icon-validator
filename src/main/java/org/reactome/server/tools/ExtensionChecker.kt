@@ -1,66 +1,57 @@
-package org.reactome.server.tools;
+package org.reactome.server.tools
 
-import com.martiansoftware.jsap.JSAPResult;
-import org.apache.commons.collections4.ListUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.martiansoftware.jsap.JSAPResult
+import org.apache.commons.collections4.ListUtils
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import java.io.File
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+class ExtensionChecker(private val config: JSAPResult) : Checker {
+    private val extensions = listOf(".svg", ".emf", ".png", ".xml")
+    private val idsToExtensions: MutableMap<String, MutableList<String>> = HashMap()
+    private var failedChecks: Int = 0
 
-public class ExtensionChecker implements Checker {
-    private static final Logger errorLogger = LoggerFactory.getLogger("errorLogger");
-
-    private final JSAPResult config;
-    private final List<String> extensions = List.of(".svg", ".emf", ".png", ".xml");
-    private final Map<String, List<String>> idsToExtensions = new HashMap<>();
-    private int error = 0;
-
-    public ExtensionChecker(JSAPResult config) {
-        this.config = config;
+    override fun getFailedChecks(): Int {
+        return failedChecks
     }
 
-    @Override
-    public void process() {
-        String directory = config.getString("directory");
+    override fun getTotalChecks(): Int {
+        return idsToExtensions.size
+    }
 
-        File filesInDir = new File(directory);
+    override fun process() {
+        val directory = config.getString("directory")
 
-        File[] files = filesInDir.listFiles();
-        if (files != null && files.length != 0) {
-            for (File file : files) {
-                String fullName = file.getName();
-                String id = fullName.substring(0, fullName.length() - 4);
-                if (!id.startsWith("R-ICO-")) continue;
-                String ext = fullName.substring(fullName.length() - 4);
-                idsToExtensions.compute(id, (key, value) -> {
-                    if (value == null) value = new ArrayList<>();
-                    value.add(ext);
-                    return value;
-                });
+        val filesInDir = File(directory)
+
+        val files = filesInDir.listFiles()
+        if (files != null && files.size != 0) {
+            for (file in files) {
+                val fullName = file.name
+                val id = fullName.substring(0, fullName.length - 4)
+                if (!id.startsWith("R-ICO-")) continue
+                val ext = fullName.substring(fullName.length - 4)
+                idsToExtensions.compute(id) { key: String?, value: MutableList<String>? ->
+                    var value = value
+                    if (value == null) value = ArrayList()
+                    value.add(ext)
+                    value
+                }
             }
         }
 
-        for (String id : idsToExtensions.keySet()) {
-            List<String> es = idsToExtensions.get(id);
+        for (id in idsToExtensions.keys) {
+            val es: List<String> = idsToExtensions[id]!!
             if (!es.containsAll(extensions)) {
-                ++error;
-                errorLogger.error("{} does not have {} file(s)", id, String.join(", ", ListUtils.subtract(extensions, es)));
+                ++failedChecks
+                errorLogger.error(
+                    "$id does not have ${extensions - es.toSet()} file(s)"
+                )
             }
         }
-
     }
 
-    @Override
-    public int getFailedChecks() {
-        return error;
-    }
-
-    @Override
-    public int getTotalChecks() {
-        return idsToExtensions.size();
+    companion object {
+        private val errorLogger: Logger = LoggerFactory.getLogger("errorLogger")
     }
 }

@@ -1,63 +1,117 @@
-package org.reactome.server.tools;
+package org.reactome.server.tools
 
-import com.martiansoftware.jsap.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.martiansoftware.jsap.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import org.reactome.server.tools.IconValidator
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.ThreadPoolExecutor
+import kotlin.coroutines.CoroutineContext
+import kotlin.system.exitProcess
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
+fun main(args: Array<String>) = runBlocking {
+    Main.main(args)
+}
 
+@Suppress("unused")
+object Main: CoroutineScope {
+    private val errorLogger: Logger = LoggerFactory.getLogger("errorLogger")
+    private val duplicateLogger: Logger = LoggerFactory.getLogger("duplicateLogger")
+    private val executor = Executors.newCachedThreadPool() as ThreadPoolExecutor
 
-@SuppressWarnings("unused")
-public class Main {
+    override val coroutineContext: CoroutineContext = Dispatchers.Main
 
-    private static final Logger errorLogger = LoggerFactory.getLogger("errorLogger");
-    private static final Logger duplicateLogger = LoggerFactory.getLogger("duplicateLogger");
-    private static final ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
+    fun main(args: Array<String>) {
+        val jsap = SimpleJSAP(
+            IconValidator::class.java.name,
+            "Validates all the icon metadata before it is indexed during data release",
+            arrayOf<Parameter>(
+                FlaggedOption(
+                    "directory",
+                    JSAP.STRING_PARSER,
+                    "../LIB",
+                    JSAP.NOT_REQUIRED,
+                    'd',
+                    "directory",
+                    "The place of icon XML to import"
+                ).setList(true).setListSeparator(','),
+                FlaggedOption(
+                    "referencesfile",
+                    JSAP.STRING_PARSER,
+                    "references.txt",
+                    JSAP.NOT_REQUIRED,
+                    'r',
+                    "referencesfile",
+                    "A file containing references"
+                ),
+                FlaggedOption(
+                    "categoriesfile",
+                    JSAP.STRING_PARSER,
+                    "categories.txt",
+                    JSAP.NOT_REQUIRED,
+                    'c',
+                    "categoriesfile",
+                    "A file containing categories"
+                ),
+                FlaggedOption(
+                    "force",
+                    JSAP.BOOLEAN_PARSER,
+                    "false",
+                    JSAP.NOT_REQUIRED,
+                    'f',
+                    "force",
+                    "<< NOT RECOMMENDED >> Forces icon validator to pass and suppress errors."
+                ),
+                FlaggedOption(
+                    "checkReferences",
+                    JSAP.BOOLEAN_PARSER,
+                    "true",
+                    JSAP.NOT_REQUIRED,
+                    'e',
+                    "checkReferences",
+                    "<< LONG PROCESS >> Check that all references are still active"
+                ),
+                FlaggedOption(
+                    "iconNameCheck",
+                    JSAP.BOOLEAN_PARSER,
+                    "false",
+                    JSAP.NOT_REQUIRED,
+                    'i',
+                    "iconNameCheck",
+                    "<< LONG PROCESS >> Add warnings when the icon name cannot be found inside the reference link content"
+                )
+            )
+        )
 
-    public static void main(String[] args) throws Exception {
+        val config = jsap.parse(args)
 
-        SimpleJSAP jsap = new SimpleJSAP(
-                IconValidator.class.getName(),
-                "Validates all the icon metadata before it is indexed during data release",
-                new Parameter[]{
-                        new FlaggedOption("directory", JSAP.STRING_PARSER, "../LIB", JSAP.NOT_REQUIRED, 'd', "directory", "The place of icon XML to import").setList(true).setListSeparator(',')
-                        , new FlaggedOption("referencesfile", JSAP.STRING_PARSER, "references.txt", JSAP.NOT_REQUIRED, 'r', "referencesfile", "A file containing references")
-                        , new FlaggedOption("categoriesfile", JSAP.STRING_PARSER, "categories.txt", JSAP.NOT_REQUIRED, 'c', "categoriesfile", "A file containing categories")
-                        , new FlaggedOption("force", JSAP.BOOLEAN_PARSER, "false", JSAP.NOT_REQUIRED, 'f', "force", "<< NOT RECOMMENDED >> Forces icon validator to pass and suppress errors.")
-                        , new FlaggedOption("checkReferences", JSAP.BOOLEAN_PARSER, "true", JSAP.NOT_REQUIRED, 'e', "checkReferences", "<< LONG PROCESS >> Check that all references are still active")
-                        , new FlaggedOption("iconNameCheck", JSAP.BOOLEAN_PARSER, "false", JSAP.NOT_REQUIRED, 'i', "iconNameCheck", "<< LONG PROCESS >> Add warnings when the icon name cannot be found inside the reference link content")
-                }
-        );
+        if (jsap.messagePrinted()) exitProcess(1)
 
-        JSAPResult config = jsap.parse(args);
-
-        if (jsap.messagePrinted()) System.exit(1);
-
-        List<Future<?>> checkers = new ArrayList<>();
-        checkers.add(executor.submit(new DuplicateChecker(config)));
-        checkers.add(executor.submit(new ExtensionChecker(config)));
-        IconValidator validator = new IconValidator(config);
-        checkers.add(executor.submit(validator));
+        val checkers: MutableList<Future<*>> = mutableListOf()
+        checkers.add(executor.submit(DuplicateChecker(config)))
+        checkers.add(executor.submit(ExtensionChecker(config)))
+        val validator = IconValidator(config)
+        checkers.add(executor.submit(validator))
 
         try {
-            for (Future<?> checker : checkers) {
-                checker.get();
+            for (checker in checkers) {
+                checker.get()
             }
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
+        } catch (e: ExecutionException) {
+            e.printStackTrace()
         }
 
         if (validator.getFailedChecks() > 0 && !config.getBoolean("force")) {
-            errorLogger.info(validator.getFailedChecks() + " errors are found in " + validator.getTotalChecks() + " XML files.");
-            System.exit(1);
+            errorLogger.info("${validator.getFailedChecks()} errors are found in ${validator.getTotalChecks()} XML files.")
+            exitProcess(1)
         }
-        System.exit(0);
-
-
+        exitProcess(0)
     }
 }

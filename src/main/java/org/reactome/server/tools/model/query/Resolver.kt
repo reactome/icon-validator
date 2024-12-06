@@ -1,94 +1,69 @@
-package org.reactome.server.tools.model.query;
+package org.reactome.server.tools.model.query
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import lombok.Builder;
-import lombok.ToString;
-import lombok.extern.jackson.Jacksonized;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 
-import java.util.List;
-
-@Jacksonized
-@Builder
-@ToString
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Resolver {
-    public final String apiVersion;
-    public final String errorMessage;
-    public final Payload payload;
-
-    @Jacksonized
-    @Builder
-    @ToString
+data class Resolver(
+    val apiVersion: String,
+    val errorMessage: String?,
+    val payload: Payload
+) {
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Payload {
-        public final ParsedCompactIdentifier parsedCompactIdentifier;
-        public final List<ResolvedResource> resolvedResources;
-
-        @Jacksonized
-        @Builder
-        @ToString
+    data class Payload(
+        val parsedCompactIdentifier: ParsedCompactIdentifier?,
+        val resolvedResources: List<ResolvedResource>
+    ) {
         @JsonIgnoreProperties(ignoreUnknown = true)
-        public static class ParsedCompactIdentifier {
-            public final String providerCode;
-            public final String namespace;
-            public final String localId;
-            public final String rawRequest;
-            public final String namespaceDeprecationDate;
-            public final Boolean deprecatedNamespace;
-            public final Boolean namespaceEmbeddedInLui;
-        }
-
-        @Jacksonized
-        @Builder
-        @ToString
+        data class ParsedCompactIdentifier(
+            val providerCode: String? = null,
+            val namespace: String,
+            val localId: String,
+            val rawRequest: String,
+            val namespaceDeprecationDate: String? = null,
+            val deprecatedNamespace: Boolean? = null,
+            val namespaceEmbeddedInLui: Boolean,
+        )
         @JsonIgnoreProperties(ignoreUnknown = true)
-        public static class ResolvedResource {
-            public final Integer id;
-            public final String mirId;
-            public final String providerCode;
-            public final String compactIdentifierResolvedUrl;
-            public final String description;
-            public final String resourceHomeUrl;
-            public final String namespacePrefix;
-            public final String namespaceDeprecationDate;
-            public final String resourceDeprecationDate;
-            public final Boolean deprecatedResource;
-            public final Boolean deprecatedNamespace;
-            public final Boolean official;
+        data class ResolvedResource(
+            val id: Int,
+            val mirId: String,
+            val providerCode: String? = null,
+            val compactIdentifierResolvedUrl: String,
+            val description: String,
+            val resourceHomeUrl: String,
+            val namespacePrefix: String,
+            val namespaceDeprecationDate: String? = null,
+            val resourceDeprecationDate: String? = null,
+            val deprecatedResource: Boolean?= null,
+            val deprecatedNamespace: Boolean? = null,
+            val official: Boolean,
+            val location: Location,
+            val institution: Institution,
+            val recommendation: Recommendation,
+        ) {
 
-            public final Location location;
-            public final Institution institution;
-            public final Recommendation recommendation;
-
-            @Jacksonized
-            @Builder
-            @ToString
             @JsonIgnoreProperties(ignoreUnknown = true)
-            public static class Location {
-                public final String countryCode;
-                public final String countryName;
-            }
+            data class Location(
+                val countryCode: String,
+                val countryName: String,
+            )
 
-            @Jacksonized
-            @Builder
-            @ToString
             @JsonIgnoreProperties(ignoreUnknown = true)
-            public static class Recommendation {
-                public final Integer recommendationIndex;
-                public final String recommendationExplanation;
-            }
+            data class Recommendation(
+                val recommendationIndex: Int,
+                val recommendationExplanation: String,
+            )
 
-            @Jacksonized
-            @Builder
-            @ToString
             @JsonIgnoreProperties(ignoreUnknown = true)
-            public static class Institution {
-                public final Integer id;
-                public final String name;
-                public final String homeUrl;
-                public final String description;
-                public final Location location;
-            }
+            data class Institution(
+                val id: Int,
+                val name: String,
+                val homeUrl: String,
+                val description: String,
+                val location: Location,
+            )
         }
     }
 }
+
+

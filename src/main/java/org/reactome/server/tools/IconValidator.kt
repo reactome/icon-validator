@@ -1,267 +1,312 @@
-package org.reactome.server.tools;
+package org.reactome.server.tools
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.martiansoftware.jsap.JSAPResult;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.reactome.server.tools.model.Icon;
-import org.reactome.server.tools.model.Person;
-import org.reactome.server.tools.model.Reference;
-import org.reactome.server.tools.model.query.Resolver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.martiansoftware.jsap.JSAPResult
+import kotlinx.coroutines.*
+import org.apache.commons.lang3.StringUtils
+import org.apache.commons.lang3.tuple.Pair
+import org.reactome.server.tools.model.Icon
+import org.reactome.server.tools.model.Reference
+import org.reactome.server.tools.model.query.Resolver
+import org.reactome.server.tools.model.query.Resolver.Payload.ResolvedResource
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import java.io.File
+import java.io.IOException
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.net.http.HttpResponse.BodyHandler
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.time.Duration
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.regex.Pattern
+import java.util.stream.Collectors
+import javax.xml.bind.JAXBContext
+import javax.xml.bind.JAXBException
+import kotlin.coroutines.CoroutineContext
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Unmarshaller;
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
+@Suppress("unused")
+class IconValidator(config: JSAPResult) : Checker, CoroutineScope {
 
-import static java.util.stream.Collectors.toList;
+    private val job = Job()
+    override val coroutineContext: CoroutineContext
+        get() = job + Dispatchers.Main
 
-@SuppressWarnings("unused")
-public class IconValidator implements Checker {
-    private static final int QUERY_INTERVAL = 100;
-    private static final Logger logger = LoggerFactory.getLogger("logger");
-    private static final Logger errorLogger = LoggerFactory.getLogger("errorLogger");
-    private static final HttpClient httpClient = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .followRedirects(HttpClient.Redirect.ALWAYS)
-            .connectTimeout(Duration.of(10, ChronoUnit.SECONDS))
-            .build();
-    private final Map<String, List<Pair<Icon, String>>> uniprotReferences = new ConcurrentHashMap<>();
-    private final HttpResponse.BodyHandler<?> bodyHandler;
-    private final List<String> CATEGORIES;
-    private final List<String> REFERENCES;
-    private final boolean iconNameCheck;
-    private final boolean checkReferences;
-    private final String directory;
-    private final AtomicInteger error = new AtomicInteger(0);
-    private final AtomicInteger countRef = new AtomicInteger(0);
-    private int xmlNum = 0;
+    private val uniprotReferences: MutableMap<String, MutableList<Pair<Icon, String>>> = ConcurrentHashMap()
+    private val bodyHandler: BodyHandler<*>
+    private val CATEGORIES: List<String>
+    private val REFERENCES: List<String>
+    private val iconNameCheck = config.getBoolean("iconNameCheck")
 
-    public IconValidator(JSAPResult config) {
-        this.directory = config.getString("directory");
-        this.checkReferences = config.getBoolean("checkReferences");
-        this.iconNameCheck = config.getBoolean("iconNameCheck");
-        this.bodyHandler = iconNameCheck ? HttpResponse.BodyHandlers.ofString() : HttpResponse.BodyHandlers.discarding();
-        this.CATEGORIES = readFile(config.getString("categoriesfile"));
-        this.REFERENCES = readFile(config.getString("referencesfile"));
-    }
+    private val checkReferences = config.getBoolean("checkReferences")
 
-    @Override
-    public void process() {
+    private val directory: String = config.getString("directory")
+    private val error = AtomicInteger(0)
+    private val countRef = AtomicInteger(0)
+    private var xmlNum = 0
 
-        File filesInDir = new File(directory);
+    override fun getFailedChecks() = run { error.get() }
 
-        File[] xmlFiles = filesInDir.listFiles((dir, name) -> name.endsWith(".xml"));
+    override fun getTotalChecks() = run { xmlNum }
+
+    override fun process() {
+        val filesInDir = File(directory)
+
+        val xmlFiles = filesInDir.listFiles { dir: File?, name: String -> name.endsWith(".xml") }
 
         if (xmlFiles != null) {
-            xmlNum = xmlFiles.length;
+            xmlNum = xmlFiles.size
             Arrays.stream(xmlFiles)
-                    .parallel()
-                    .forEach(file -> {
-                        Icon icon = convertXmlToObj(file);
-                        if (icon != null) {
-                            validateXmlObj(file, icon);
-                        }
-                    });
-            processBatchChecking();
+                .parallel()
+                .forEach { file: File ->
+                    val icon = convertXmlToObj(file)
+                    if (icon != null) {
+                        validateXmlObj(file, icon)
+                    }
+                }
+            processBatchChecking()
         }
     }
 
-    private Icon convertXmlToObj(File file) {
-        JAXBContext jaxbContext;
+    private fun convertXmlToObj(file: File): Icon? {
+        val jaxbContext: JAXBContext
         try {
-            jaxbContext = JAXBContext.newInstance(Icon.class);
-            Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-            return (Icon) jaxbUnmarshaller.unmarshal(file);
-        } catch (JAXBException e) {
-            errorLogger.error(e.getCause().getMessage() + " File: " + file.getName());
-            error.incrementAndGet();
+            jaxbContext = JAXBContext.newInstance(Icon::class.java)
+            val jaxbUnmarshaller = jaxbContext.createUnmarshaller()
+            return jaxbUnmarshaller.unmarshal(file) as Icon
+        } catch (e: JAXBException) {
+            errorLogger.error(e.cause?.message + " File: " + file.name)
+            error.incrementAndGet()
         }
-        return null;
+        return null
     }
 
-    private void validateXmlObj(File xmlFile, Icon icon) {
-        System.out.println(countRef.incrementAndGet() + " / " + xmlNum + " xml files analysed");
-        List<String> categories = icon.getCategories();
-        for (String category : categories) {
-            if (!CATEGORIES.contains(category.toLowerCase())) {
-                errorLogger.error("[" + category + "] at the element \"category\" is not in the list CATEGORIES in the " + xmlFile.getName() + ".");
-                error.incrementAndGet();
+    private fun validateXmlObj(xmlFile: File, icon: Icon) {
+        println("${countRef.incrementAndGet()} / $xmlNum xml files analysed")
+        for (category in icon.categories) {
+            if (!CATEGORIES.contains(category.lowercase())) {
+                errorLogger.error("[$category] at the element \"category\" is not in the list CATEGORIES in the ${xmlFile.name}.")
+                error.incrementAndGet()
             }
         }
 
-        List<Person> person = icon.getPerson();
+        val person = icon.person
         if (person == null) {
-            errorLogger.error("Element \"person\" is not found in " + xmlFile.getName() + ".");
-            error.incrementAndGet();
+            errorLogger.error("Element \"person\" is not found in ${xmlFile.name}.")
+            error.incrementAndGet()
         }
 
-        List<Reference> references = icon.getReferences();
+        val references = icon.references
         if (references != null) {
-            for (Reference reference : references) {
-                if (!REFERENCES.contains(reference.getDb())) {
-                    errorLogger.error("[" + reference.getDb() + "] at element \"reference\" is not in the list REFERENCE in " + xmlFile.getName() + ".");
-                    error.incrementAndGet();
-                } else if (checkReferences && !checkReference(reference, icon, xmlFile.getName(), 0)) {
-                    error.incrementAndGet();
+            for (reference in references) {
+                if (!REFERENCES.contains(reference.db)) {
+                    errorLogger.error("[" + reference.db + "] at element \"reference\" is not in the list REFERENCE in " + xmlFile.name + ".")
+                    error.incrementAndGet()
+                } else if (checkReferences && !checkReference(reference, icon, xmlFile.name, 0)) {
+                    error.incrementAndGet()
                 }
             }
         } else {
-            logger.debug("Element \"reference\" was not found in " + xmlFile.getName() + ".");
+            logger.debug("Element \"reference\" was not found in " + xmlFile.name + ".")
         }
 
-        List<String> synonyms = icon.getSynonyms();
+        val synonyms = icon.synonyms
         if (synonyms != null) {
-            for (String synonym : synonyms) {
-                if (synonym.equals("")) {
-                    errorLogger.error("Element \"synonym\" is missing value in " + xmlFile.getName() + ".");
-                    error.incrementAndGet();
+            for (synonym in synonyms) {
+                if (synonym == "") {
+                    errorLogger.error("Element \"synonym\" is missing value in " + xmlFile.name + ".")
+                    error.incrementAndGet()
                 }
             }
         }
     }
 
-    private static final Pattern prefixPattern = Pattern.compile("^[A-Za-z.]+:");
+    private var prevQueryTime: Instant = Instant.now()
 
-    private static final Map<String, List<String>> identifiersPrefixes = Map.of(
-            "ENA", List.of("ena.embl"),
-            "PUBCHEM", List.of("pubchem.compound"),
-            "PUBCHEM-BIOASSAY", List.of("pubchem.bioassay"),
-            "PUBCHEM-SUBSTANCE", List.of("pubchem.substance"),
-            "IUPHAR", List.of("iuphar.family", "iuphar.ligand", "iuphar.receptor"),
-            "NCBI", List.of("ncbigene", "ncbiprotein")
-    );
+    init {
+        this.bodyHandler =
+            if (iconNameCheck) HttpResponse.BodyHandlers.ofString() else HttpResponse.BodyHandlers.discarding()
+        this.CATEGORIES = readFile(config.getString("categoriesfile"))
+        this.REFERENCES = readFile(config.getString("referencesfile"))
+    }
 
-    private static final Map<String, Function<String, String>> idBuilders = Map.of(
-            "ncbiprotein", id -> id.replace(':', '_')
-    );
-
-    private static final Map<String, Function<Reference, List<String>>> dbToUrlBuilders = Map.of(
-            "UNIPROT-T", reference -> List.of("https://www.uniprot.org/taxonomy/" + reference.getId()),
-            "KEGG", reference -> List.of("http://rest.kegg.jp/get/" + reference.getId()),
-            "OPL", reference -> List.of("https://www.ebi.ac.uk/ols/api/ontologies/opl/terms?iri=http://purl.obolibrary.org/obo/" + reference.getId().replace(':', '_')),
-            "DEFAULT", reference -> identifiersPrefixes
-                    .getOrDefault(reference.getDb(), List.of(reference.getDb()))
-                    .stream()
-                    .map(prefix -> "https://resolver.api.identifiers.org/" + prefix + ":" +
-                            idBuilders.getOrDefault(prefix, id -> prefixPattern.matcher(id).replaceFirst("")).apply(reference.getId())
-                    )
-                    .flatMap(resolverURL -> {
-                        HttpRequest request = HttpRequest.newBuilder(URI.create(resolverURL)).build();
-                        try {
-                            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                            Resolver resolver = new ObjectMapper().readValue(response.body(), Resolver.class);
-                            return resolver.payload.resolvedResources.stream().map(resolvedResource -> resolvedResource.compactIdentifierResolvedUrl);
-                        } catch (IOException | InterruptedException e) {
-                            e.printStackTrace();
-                            return Stream.empty();
-                        }
-                    })
-                    .collect(toList())
-    );
-
-    private Instant prevQueryTime = Instant.now();
-
-    @SuppressWarnings("unchecked")
-    private boolean checkReference(Reference reference, Icon icon, String iconId, int recursionLevel) {
-        if (reference.getDb().equals("UNIPROT")) {
-            uniprotReferences.computeIfAbsent(reference.getId(), id -> new ArrayList<>()).add(Pair.of(icon, iconId));
-            return true;
+    private fun checkReference(reference: Reference, icon: Icon, iconId: String, recursionLevel: Int): Boolean {
+        if (reference.db == "UNIPROT") {
+            uniprotReferences.computeIfAbsent(reference.id) { ArrayList() }.add(Pair.of(icon, iconId))
+            return true
         }
 
-        boolean isFinalTry = recursionLevel > 2;
-        String errorMessage;
-        HttpRequest request;
-        HttpResponse<?> response;
-        List<String> urls = dbToUrlBuilders.getOrDefault(reference.getDb(), dbToUrlBuilders.get("DEFAULT")).apply(reference);
+        val isFinalTry = recursionLevel > 2
+        val errorMessage: String
+        var request: HttpRequest?
+        var response: HttpResponse<*>
+        val urls = dbToUrlBuilders.getOrDefault(reference.db, dbToUrlBuilders["DEFAULT"]!!)(reference)
 
-        for (String url : urls) {
+        for (url in urls) {
             try {
                 if (Duration.between(prevQueryTime, Instant.now()).toMillis() < QUERY_INTERVAL) {
-                    Thread.sleep(QUERY_INTERVAL);
+                    Thread.sleep(QUERY_INTERVAL.toLong())
                 }
 
-                prevQueryTime = Instant.now();
-                request = HttpRequest.newBuilder(URI.create(url)).build();
-                response = httpClient.send(request, bodyHandler);
+                prevQueryTime = Instant.now()
+                request = HttpRequest.newBuilder(URI.create(url)).build()
+                response = httpClient.send(request, bodyHandler)
                 if (response.statusCode() / 100 == 2) {
-                    if (iconNameCheck && !StringUtils.containsIgnoreCase(((HttpResponse<String>) response).body(), icon.getName())) {
-                        errorLogger.warn("{} : {} can be found at {}, but the result do not contains {}",
-                                iconId, reference, response.uri(), icon.getName());
+                    if (iconNameCheck && !StringUtils.containsIgnoreCase(
+                            (response as HttpResponse<String?>).body(),
+                            icon.name
+                        )
+                    ) {
+                        errorLogger.warn(
+                            "{} : {} can be found at {}, but the result do not contains {}",
+                            iconId, reference, response.uri(), icon.name
+                        )
                     }
-                    return true;
+                    return true
                 }
-            } catch (IOException | InterruptedException e) {
-                errorLogger.warn(String.format("Checking %s : %s threw %s while testing following url : %s", iconId, reference, e.getMessage(), url));
-                e.printStackTrace();
+            } catch (e: IOException) {
+                errorLogger.warn(
+                    String.format(
+                        "Checking %s : %s threw %s while testing following url : %s",
+                        iconId,
+                        reference,
+                        e.message,
+                        url
+                    )
+                )
+                e.printStackTrace()
+            } catch (e: InterruptedException) {
+                errorLogger.warn(
+                    String.format(
+                        "Checking %s : %s threw %s while testing following url : %s",
+                        iconId,
+                        reference,
+                        e.message,
+                        url
+                    )
+                )
+                e.printStackTrace()
             }
         }
-        errorMessage = String.format("%s : %s cannot be found at the following urls %s. This might be due to a non supported database. Please contact eragueneau@ebi.ac.uk in such case",
-                iconId, reference, urls);
+        errorMessage =
+            "$iconId : $reference cannot be found at the following urls $urls. This might be due to a non supported database. Please contact eragueneau@ebi.ac.uk in such case"
 
 
         if (!isFinalTry) {
             try {
-                Thread.sleep(1000);
-            } catch (InterruptedException ignored) {
+                Thread.sleep(1000)
+            } catch (ignored: InterruptedException) {
             }
-            System.out.format("%s : %s check failed on its attempt #%d\n", iconId, reference, recursionLevel + 1);
-            return checkReference(reference, icon, iconId, recursionLevel + 1);
+            println("$iconId : $reference check failed on its attempt #${recursionLevel + 1}")
+            return checkReference(reference, icon, iconId, recursionLevel + 1)
         } else {
-            errorLogger.error(errorMessage);
-            return false;
+            errorLogger.error(errorMessage)
+            return false
         }
     }
 
-    private void processBatchChecking() {
-        Set<String> correctAccessions = Utils.queryUniprot(uniprotReferences.keySet());
-        for (String queriedAccession : uniprotReferences.keySet()) {
-            if (correctAccessions.contains(queriedAccession)) continue;
-            for (Pair<Icon, String> iconAndName : uniprotReferences.get(queriedAccession)) {
-                error.incrementAndGet();
-                errorLogger.error("{} : {} doesn't seem to exist",
-                        iconAndName.getRight(), new Reference("UNIPROT", queriedAccession));
+    private fun processBatchChecking() {
+        val correctAccessions = Utils.queryUniprot(uniprotReferences.keys)
+        for (queriedAccession in uniprotReferences.keys) {
+            if (correctAccessions.contains(queriedAccession)) continue
+            for (iconAndName in uniprotReferences[queriedAccession]!!) {
+                error.incrementAndGet()
+                errorLogger.error(
+                    "{} : {} doesn't seem to exist",
+                    iconAndName.right, Reference("UNIPROT", queriedAccession)
+                )
             }
         }
     }
 
 
-    private List<String> readFile(String fileName) {
-        List<String> result;
-        try (Stream<String> lines = Files.lines(Paths.get(fileName))) {
-            result = lines.collect(toList());
-        } catch (IOException e) {
-            error.incrementAndGet();
-            throw new RuntimeException("Cannot read file: " + fileName);
+    private fun readFile(fileName: String): List<String> {
+        val result: List<String>
+        try {
+            Files.lines(Paths.get(fileName)).use { lines ->
+                result = lines.collect(Collectors.toList())
+            }
+        } catch (e: IOException) {
+            error.incrementAndGet()
+            throw RuntimeException("Cannot read file: $fileName")
         }
-        return result;
+        return result
     }
 
-    @Override
-    public int getFailedChecks() {
-        return error.get();
-    }
 
-    @Override
-    public int getTotalChecks() {
-        return xmlNum;
+    companion object {
+        private const val QUERY_INTERVAL = 100
+        private val logger: Logger = LoggerFactory.getLogger("logger")
+        private val errorLogger: Logger = LoggerFactory.getLogger("errorLogger")
+
+        val mapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
+
+        val httpClient: HttpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .followRedirects(HttpClient.Redirect.ALWAYS)
+            .connectTimeout(Duration.of(10, ChronoUnit.SECONDS))
+            .build()
+
+        private val prefixPattern: Pattern = Pattern.compile("^[A-Za-z.]+:")
+
+        private val identifiersPrefixes: Map<String, List<String>> = mapOf(
+            "ENA" to listOf("ena.embl"),
+            "PUBCHEM" to listOf("pubchem.compound"),
+            "PUBCHEM-BIOASSAY" to listOf("pubchem.bioassay"),
+            "PUBCHEM-SUBSTANCE" to listOf("pubchem.substance"),
+            "IUPHAR" to listOf("iuphar.family", "iuphar.ligand", "iuphar.receptor"),
+            "NCBI" to listOf("ncbigene", "ncbiprotein")
+        )
+
+        private val idBuilders: Map<String, (String) -> String> = mapOf(
+            "ncbiprotein" to { it.replace(':', '_') }
+        )
+
+        private val dbToUrlBuilders: Map<String, (Reference) -> List<String>> = mapOf(
+            "UNIPROT-T" to { listOf("https://www.uniprot.org/taxonomy/${it.id}") },
+            "KEGG" to { listOf("http://rest.kegg.jp/get/${it.id}") },
+            "MESH" to { listOf("https://www.ncbi.nlm.nih.gov/mesh/?term=${it.id}") },
+            "OPL" to {
+                listOf(
+                    "https://www.ebi.ac.uk/ols/api/ontologies/opl/terms?iri=http://purl.obolibrary.org/obo/${
+                        it.id.replace(
+                            ':',
+                            '_'
+                        )
+                    }"
+                )
+            },
+            "DEFAULT" to { reference ->
+                identifiersPrefixes
+                    .getOrDefault(reference.db, listOf(reference.db))
+                    .map { prefix: String ->
+                        "https://resolver.api.identifiers.org/$prefix:" +
+                                idBuilders
+                                    .getOrDefault(prefix) { prefixPattern.matcher(it).replaceFirst("") }(reference.id)
+                    }
+                    .flatMap { resolverURL: String? ->
+                        if (resolverURL == null) return@flatMap emptyList()
+
+                        val request = HttpRequest.newBuilder(URI.create(resolverURL)).build()
+                        try {
+                            val response: String = httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body()
+                            val resolver: Resolver = mapper.readValue(response)
+                            return@flatMap resolver.payload.resolvedResources.map { it.compactIdentifierResolvedUrl }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            return@flatMap emptyList()
+                        }
+                    }
+            }
+        )
     }
 }

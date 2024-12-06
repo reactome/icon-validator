@@ -1,66 +1,31 @@
-package org.reactome.server.tools.model;
+package org.reactome.server.tools.model
 
-import javax.xml.bind.annotation.*;
+import javax.xml.bind.annotation.*
 
 /**
  * Created by Chuqiao on 2019/11/12.
  */
-
 @XmlRootElement(name = "person")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class Person {
+class Person {
+    @XmlAttribute
+    var role: String? = null
 
     @XmlAttribute
-    private String role;
+    var orcid: String? = null
 
     @XmlAttribute
-    private String orcid;
-
-    @XmlAttribute
-    private String url;
+    var url: String? = null
 
     @XmlValue
-    private String name;
+    var name: String? = null
 
-    public Person() {
-    }
+    constructor()
 
-    public Person(String role, String orcid, String url, String name) {
-        this.role = role;
-        this.orcid = orcid;
-        this.url = url;
-        this.name = name;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
-    public void setUrl(String url) {
-        this.url = url;
-    }
-
-    public String getOrcid() {
-        return orcid;
-    }
-
-    public void setOrcid(String orcid) {
-        this.orcid = orcid;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
+    constructor(role: String?, orcid: String?, url: String?, name: String?) {
+        this.role = role
+        this.orcid = orcid
+        this.url = url
+        this.name = name
     }
 }

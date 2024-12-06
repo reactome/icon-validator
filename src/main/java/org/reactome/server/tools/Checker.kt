@@ -1,19 +1,17 @@
-package org.reactome.server.tools;
+package org.reactome.server.tools
 
-import java.time.Duration;
-import java.time.Instant;
+import java.time.Duration
+import java.time.Instant
 
-public interface Checker extends Runnable {
-    @Override
-    default void run() {
-        Instant start = Instant.now();
-        process();
-        System.out.println(this.getClass().getSimpleName() + " finished in " + Duration.between(start, Instant.now()).toString().substring(2));
+interface Checker : Runnable {
+    override fun run() {
+        val start = Instant.now()
+        process()
+        println("${javaClass.simpleName} finished in ${Duration.between(start, Instant.now()).toString().substring(2)}")
     }
 
-    void process();
+    fun process()
 
-    int getFailedChecks();
-
-    int getTotalChecks();
+    fun getFailedChecks(): Int
+    fun getTotalChecks(): Int
 }

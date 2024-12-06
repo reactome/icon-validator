@@ -1,45 +1,58 @@
-package org.reactome.server.tools.model;
+package org.reactome.server.tools.model
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.util.*
+import javax.xml.bind.annotation.*
 
-import javax.xml.bind.annotation.*;
-import java.util.List;
 
 /**
  * Created by Chuqiao on 2019/11/11.
  */
-
 @XmlRootElement(name = "metadata")
 @XmlAccessorType(XmlAccessType.FIELD)
-@Data
-@NoArgsConstructor
-public class Icon {
-
+class Icon {
     @XmlElementWrapper(name = "categories")
     @XmlElement(name = "category")
-    private List<String> categories;
+    lateinit var categories: List<String>
 
     @XmlElement
-    private List<Person> person;
+    var person: List<Person>? = null
 
     @XmlElement
-    private String name;
+    var name: String? = null
 
     @XmlElement
-    private String description;
+    var description: String? = null
 
     @XmlElement
-    private String info;
+    var info: String? = null
 
     @XmlElementWrapper(name = "references")
     @XmlElement(name = "reference")
-    private List<Reference> references;
+    var references: List<Reference>? = null
 
     @XmlElementWrapper(name = "synonyms")
     @XmlElement(name = "synonym")
-    private List<String> synonyms;
+    var synonyms: List<String>? = null
 
     @XmlElement
-    private boolean skip;
+    var isSkip: Boolean = false
+
+    override fun equals(o: Any?): Boolean {
+        if (o == null || javaClass != o.javaClass) return false
+        val icon = o as Icon
+        return isSkip == icon.isSkip && categories == icon.categories && person == icon.person && name == icon.name && description == icon.description && info == icon.info && references == icon.references && synonyms == icon.synonyms
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(
+            categories,
+            person,
+            name,
+            description,
+            info,
+            references,
+            synonyms,
+            isSkip
+        )
+    }
 }
