@@ -169,6 +169,8 @@ public class IconValidator implements Checker {
                             Resolver resolver = new ObjectMapper().readValue(response.body(), Resolver.class);
                             return resolver.payload.resolvedResources.stream().map(resolvedResource -> resolvedResource.compactIdentifierResolvedUrl);
                         } catch (IOException | InterruptedException e) {
+                            errorLogger.error(e.getCause().getMessage());
+                            errorLogger.warn("Failed to resolve identifier resolvedUrl: " + resolverURL);
                             e.printStackTrace();
                             return Stream.empty();
                         }

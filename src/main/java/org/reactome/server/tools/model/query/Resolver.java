@@ -1,5 +1,6 @@
 package org.reactome.server.tools.model.query;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Builder;
 import lombok.ToString;
 import lombok.extern.jackson.Jacksonized;
@@ -9,6 +10,7 @@ import java.util.List;
 @Jacksonized
 @Builder
 @ToString
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Resolver {
     public final String apiVersion;
     public final String errorMessage;
@@ -17,6 +19,7 @@ public class Resolver {
     @Jacksonized
     @Builder
     @ToString
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Payload {
         public final ParsedCompactIdentifier parsedCompactIdentifier;
         public final List<ResolvedResource> resolvedResources;
@@ -24,6 +27,7 @@ public class Resolver {
         @Jacksonized
         @Builder
         @ToString
+        @JsonIgnoreProperties(ignoreUnknown = true)
         public static class ParsedCompactIdentifier {
             public final String providerCode;
             public final String namespace;
@@ -37,6 +41,7 @@ public class Resolver {
         @Jacksonized
         @Builder
         @ToString
+        @JsonIgnoreProperties(ignoreUnknown = true)
         public static class ResolvedResource {
             public final Integer id;
             public final String mirId;
@@ -58,6 +63,7 @@ public class Resolver {
             @Jacksonized
             @Builder
             @ToString
+            @JsonIgnoreProperties(ignoreUnknown = true)
             public static class Location {
                 public final String countryCode;
                 public final String countryName;
@@ -66,6 +72,7 @@ public class Resolver {
             @Jacksonized
             @Builder
             @ToString
+            @JsonIgnoreProperties(ignoreUnknown = true)
             public static class Recommendation {
                 public final Integer recommendationIndex;
                 public final String recommendationExplanation;
@@ -74,6 +81,7 @@ public class Resolver {
             @Jacksonized
             @Builder
             @ToString
+            @JsonIgnoreProperties(ignoreUnknown = true)
             public static class Institution {
                 public final Integer id;
                 public final String name;
