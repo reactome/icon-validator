@@ -99,7 +99,7 @@ public class IconValidator implements Checker {
     }
 
     private void validateXmlObj(File xmlFile, Icon icon) {
-        System.out.println(countRef.incrementAndGet() + " / " + xmlNum + " xml files analysed");
+        System.out.println(countRef.incrementAndGet() + " / " + xmlNum + " xml files analysed (" + xmlFile.getName() + ")");
         List<String> categories = icon.getCategories();
         for (String category : categories) {
             if (!CATEGORIES.contains(category.toLowerCase())) {
@@ -169,9 +169,16 @@ public class IconValidator implements Checker {
                         try {
                             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                             Resolver resolver = new ObjectMapper().readValue(response.body(), Resolver.class);
-                            return resolver.payload.resolvedResources.stream().map(resolvedResource -> resolvedResource.compactIdentifierResolvedUrl);
-                        } catch (IOException | InterruptedException e) {
-                            errorLogger.error(e.getCause().getMessage());
+                            if (resolver.errorMessage != null) {
+                                errorLogger.error(resolver.errorMessage);
+                                errorLogger.warn("Failed to resolve identifier resolvedUrl: " + resolverURL);
+                            } else {
+                                return resolver.payload.resolvedResources.stream().map(resolvedResource -> resolvedResource.compactIdentifierResolvedUrl);
+                            }
+                        } catch (Exception e) {
+                            if (e.getCause() != null && e.getCause().getMessage() != null)
+                                errorLogger.error(e.getCause().getMessage());
+                            if (e.getMessage() != null) errorLogger.error(e.getMessage());
                             errorLogger.warn("Failed to resolve identifier resolvedUrl: " + resolverURL);
                             e.printStackTrace();
                             return Stream.empty();
@@ -234,15 +241,20 @@ public class IconValidator implements Checker {
     }
 
     private void processBatchChecking() {
-        Set<String> correctAccessions = Utils.queryUniprot(uniprotReferences.keySet());
-        for (String queriedAccession : uniprotReferences.keySet()) {
-            if (correctAccessions.contains(queriedAccession)) continue;
-            for (Pair<Icon, String> iconAndName : uniprotReferences.get(queriedAccession)) {
-                error.incrementAndGet();
-                errorLogger.error("{} : {} doesn't seem to exist",
-                        iconAndName.getRight(), new Reference("UNIPROT", queriedAccession));
+        System.out.println("Checking UniProt references in batch");
+        Utils.slice(uniprotReferences.keySet(), 300).forEach(refBatch -> {
+            System.out.println("Checking UniProt references, batch " + StringUtils.join(refBatch, ","));
+
+            Set<String> correctAccessions = Utils.queryUniprot(new HashSet<>(refBatch));
+            for (String queriedAccession : refBatch) {
+                if (correctAccessions.contains(queriedAccession)) continue;
+                for (Pair<Icon, String> iconAndName : uniprotReferences.get(queriedAccession)) {
+                    error.incrementAndGet();
+                    errorLogger.error("{} : {} doesn't seem to exist",
+                            iconAndName.getRight(), new Reference("UNIPROT", queriedAccession));
+                }
             }
-        }
+        });
     }
 
 
