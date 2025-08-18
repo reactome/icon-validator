@@ -30,7 +30,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -41,7 +40,7 @@ public class IconValidator implements Checker {
     private static final Logger logger = LoggerFactory.getLogger("logger");
     private static final Logger errorLogger = LoggerFactory.getLogger("errorLogger");
     private static final HttpClient httpClient = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_2)
+            .version(HttpClient.Version.HTTP_1_1)
             .followRedirects(HttpClient.Redirect.ALWAYS)
             .connectTimeout(Duration.of(10, ChronoUnit.SECONDS))
             .build();
@@ -144,7 +143,9 @@ public class IconValidator implements Checker {
 
     private static final Map<String, List<String>> identifiersPrefixes = Map.of(
             "ENA", List.of("ena.embl"),
-            "PUBCHEM", List.of("pubchem.compound", "pubchem.substance", "pubchem.bioassay"),
+            "PUBCHEM", List.of("pubchem.compound"),
+            "PUBCHEM-BIOASSAY", List.of("pubchem.bioassay"),
+            "PUBCHEM-SUBSTANCE", List.of("pubchem.substance"),
             "IUPHAR", List.of("iuphar.family", "iuphar.ligand", "iuphar.receptor"),
             "NCBI", List.of("ncbigene", "ncbiprotein")
     );
@@ -154,6 +155,7 @@ public class IconValidator implements Checker {
     );
 
     private static final Map<String, Function<Reference, List<String>>> dbToUrlBuilders = Map.of(
+            "UNIPROT-T", reference -> List.of("https://www.uniprot.org/taxonomy/" + reference.getId()),
             "KEGG", reference -> List.of("http://rest.kegg.jp/get/" + reference.getId()),
             "OPL", reference -> List.of("https://www.ebi.ac.uk/ols/api/ontologies/opl/terms?iri=http://purl.obolibrary.org/obo/" + reference.getId().replace(':', '_')),
             "DEFAULT", reference -> identifiersPrefixes
@@ -232,27 +234,15 @@ public class IconValidator implements Checker {
     }
 
     private void processBatchChecking() {
-        Utils.slice(uniprotReferences.keySet(), 300).forEach(refBatch -> {
-            Map<String, Object> postData = Map.of(
-                    "query", String.join(" ", refBatch),
-                    "from", "ACC+ID",
-                    "to", "ACC",
-                    "format", "tab"
-            );
-
-            Set<String> correctAccessions = Arrays.stream(Utils.queryUniprot(postData).split("\n"))
-                    .skip(1) // Skip header
-                    .map(line -> line.split("\t")[0])
-                    .collect(Collectors.toSet());
-            for (String queriedAccession : refBatch) {
-                if (correctAccessions.contains(queriedAccession)) continue;
-                for (Pair<Icon, String> iconAndName : uniprotReferences.get(queriedAccession)) {
-                    error.incrementAndGet();
-                    errorLogger.error("{} : {} doesn't seem to exist",
-                            iconAndName.getRight(), new Reference("UNIPROT", queriedAccession));
-                }
+        Set<String> correctAccessions = Utils.queryUniprot(uniprotReferences.keySet());
+        for (String queriedAccession : uniprotReferences.keySet()) {
+            if (correctAccessions.contains(queriedAccession)) continue;
+            for (Pair<Icon, String> iconAndName : uniprotReferences.get(queriedAccession)) {
+                error.incrementAndGet();
+                errorLogger.error("{} : {} doesn't seem to exist",
+                        iconAndName.getRight(), new Reference("UNIPROT", queriedAccession));
             }
-        });
+        }
     }
 
 

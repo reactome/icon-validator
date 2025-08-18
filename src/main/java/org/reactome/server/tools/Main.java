@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -43,14 +44,20 @@ public class Main {
         IconValidator validator = new IconValidator(config);
         checkers.add(executor.submit(validator));
 
-        while (true) {
-            if (checkers.stream().allMatch(Future::isDone)) {
-                if (validator.getFailedChecks() > 0 && !config.getBoolean("force")) {
-                    errorLogger.info(validator.getFailedChecks() + " errors are found in " + validator.getTotalChecks() + " XML files.");
-                    System.exit(1);
-                }
-                System.exit(0);
+        try {
+            for (Future<?> checker : checkers) {
+                checker.get();
             }
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
         }
+
+        if (validator.getFailedChecks() > 0 && !config.getBoolean("force")) {
+            errorLogger.info(validator.getFailedChecks() + " errors are found in " + validator.getTotalChecks() + " XML files.");
+            System.exit(1);
+        }
+        System.exit(0);
+
+
     }
 }
