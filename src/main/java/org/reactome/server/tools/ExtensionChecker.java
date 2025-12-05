@@ -15,7 +15,7 @@ public class ExtensionChecker implements Checker {
     private static final Logger errorLogger = LoggerFactory.getLogger("errorLogger");
 
     private final JSAPResult config;
-    private final List<String> extensions = List.of(".svg", ".emf", ".png", ".xml");
+    private final List<String> extensions = List.of(".svg", ".png", ".xml");
     private final Map<String, List<String>> idsToExtensions = new HashMap<>();
     private int error = 0;
 
