@@ -26,6 +26,7 @@ public class Main {
                 "Validates all the icon metadata before it is indexed during data release",
                 new Parameter[]{
                         new FlaggedOption("directory", JSAP.STRING_PARSER, "../LIB", JSAP.NOT_REQUIRED, 'd', "directory", "The place of icon XML to import").setList(true).setListSeparator(',')
+                        , new FlaggedOption("ehldDirectory", JSAP.STRING_PARSER, JSAP.NO_DEFAULT, JSAP.NOT_REQUIRED, 's', "ehldDirectory", "Directory containing EHLD SVG files to validate")
                         , new FlaggedOption("referencesfile", JSAP.STRING_PARSER, "references.txt", JSAP.NOT_REQUIRED, 'r', "referencesfile", "A file containing references")
                         , new FlaggedOption("categoriesfile", JSAP.STRING_PARSER, "categories.txt", JSAP.NOT_REQUIRED, 'c', "categoriesfile", "A file containing categories")
                         , new FlaggedOption("force", JSAP.BOOLEAN_PARSER, "false", JSAP.NOT_REQUIRED, 'f', "force", "<< NOT RECOMMENDED >> Forces icon validator to pass and suppress errors.")
@@ -39,10 +40,22 @@ public class Main {
         if (jsap.messagePrinted()) System.exit(1);
 
         List<Future<?>> checkers = new ArrayList<>();
+        List<Checker> allCheckers = new ArrayList<>();
+
+        // Icon validators
         checkers.add(executor.submit(new DuplicateChecker(config)));
         checkers.add(executor.submit(new ExtensionChecker(config)));
-        IconValidator validator = new IconValidator(config);
-        checkers.add(executor.submit(validator));
+        IconValidator iconValidator = new IconValidator(config);
+        allCheckers.add(iconValidator);
+        checkers.add(executor.submit(iconValidator));
+
+        // EHLD validator (optional)
+        EhldValidator ehldValidator = null;
+        if (config.getString("ehldDirectory") != null) {
+            ehldValidator = new EhldValidator(config);
+            allCheckers.add(ehldValidator);
+            checkers.add(executor.submit(ehldValidator));
+        }
 
         try {
             for (Future<?> checker : checkers) {
@@ -52,8 +65,16 @@ public class Main {
             e.printStackTrace();
         }
 
-        if (validator.getFailedChecks() > 0 && !config.getBoolean("force")) {
-            errorLogger.info(validator.getFailedChecks() + " errors are found in " + validator.getTotalChecks() + " XML files.");
+        int totalErrors = 0;
+        for (Checker checker : allCheckers) {
+            totalErrors += checker.getFailedChecks();
+        }
+
+        if (totalErrors > 0 && !config.getBoolean("force")) {
+            errorLogger.info(iconValidator.getFailedChecks() + " errors are found in " + iconValidator.getTotalChecks() + " XML files.");
+            if (ehldValidator != null) {
+                errorLogger.info(ehldValidator.getFailedChecks() + " errors are found in " + ehldValidator.getTotalChecks() + " EHLD files.");
+            }
             System.exit(1);
         }
         System.exit(0);
