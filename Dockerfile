@@ -37,3 +37,4 @@ ARG EXEC_JAR_FILE=target/illustration-validator-jar-with-dependencies.jar
 WORKDIR ${REPO_DIR}
 
 COPY --from=build-jar ${REPO_DIR}/${EXEC_JAR_FILE} ./target/
+COPY references.txt categories.txt ./
