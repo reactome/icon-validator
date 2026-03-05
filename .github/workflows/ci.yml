@@ -1,4 +1,4 @@
-name: icon-validator ci
+name: illustration-validator ci
 
 on:
     workflow_dispatch:   
@@ -19,7 +19,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
         runs-on: ubuntu-latest
         env:
-            REPO_DIR: /opt/icon-validator
+            REPO_DIR: /opt/illustration-validator
         steps:
             - uses: actions/checkout@v4
 
@@ -84,7 +84,7 @@ jobs:
             - env:
                 AWS_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
                 AWS_REGISTRY_ALIAS: reactome
-                AWS_REPO: icon-validator
+                AWS_REPO: illustration-validator
                 IMG_TAG: ${{ steps.get-hash.outputs.SHORT_SHA }}
               run: |
                 docker load --input /tmp/image.tar

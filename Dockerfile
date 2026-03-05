@@ -1,4 +1,4 @@
-ARG REPO_DIR=/opt/icon-validator
+ARG REPO_DIR=/opt/illustration-validator
 
 
 # ===== stage 1 =====
@@ -32,7 +32,7 @@ FROM eclipse-temurin:11-jre-focal
 
 ARG REPO_DIR
 
-ARG EXEC_JAR_FILE=target/icon-validator-jar-with-dependencies.jar
+ARG EXEC_JAR_FILE=target/illustration-validator-jar-with-dependencies.jar
 
 WORKDIR ${REPO_DIR}
 

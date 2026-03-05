@@ -1,12 +1,13 @@
 [<img src=https://user-images.githubusercontent.com/6883670/31999264-976dfb86-b98a-11e7-9432-0316345a72ea.png height=75 />](https://reactome.org)
 
-# Icon Validator
+# Illustration Validator
 
-## What is the Reactome Icon Validator
+## What is the Reactome Illustration Validator
 
-Reactome improves the graphical representation of higher-level pathways in the Reactome pathway browser with the idea of [icon library](https://reactome.org/icon-info/icons-guidelines), this project is meant to validate the structure and value of each icon XML file.
+Reactome improves the graphical representation of higher-level pathways in the Reactome pathway browser with the idea of [icon library](https://reactome.org/icon-info/icons-guidelines) and EHLD diagrams. This project validates the structure and value of each icon XML metadata file and the SVG structure of EHLD diagrams.
 
-#### icon XML file
+### Icon XML Validation
+
 The correct xml file should have the following structure:
 ```html
 <metadata>
@@ -32,17 +33,24 @@ The correct xml file should have the following structure:
 * {REFERENCE_NAME} for the name of the resource you have used to find this component (e.g.: UNIPROT, GO, CHEBI … ).
 * {SYNONYM} as any synonyms or alternative names your component might be known of.
 
-This validator validates the meaningful value of significant elements like {category}, catch the unmatching end-tags and mistaken attribute specifications, generates a validation log file in the end to display all errors. It won't cause any problems after fixing the errors in the file and then sending them to server.
+### EHLD SVG Validation
+
+EHLD SVGs are validated for correct structure:
+* Filename matches `R-HSA-[numbers].svg`
+* `BG` group exists with a `LOGO` inside it
+* At least one `REGION-R-HSA-[numbers]` group exists
+* Each `REGION` has a matching `OVERLAY-R-HSA-[numbers]` inside it
+* `FG` group is optional (warning if missing)
 
 ## Installation & Usage
 
-#### Requirements 
+#### Requirements
     1. Maven 3.X - [Installation Guide](http://maven.apache.org/install.html)
-     
+
 #### Git Clone
 ```console
-git clone https://github.com/reactome/icon-validator.git 
-cd icon-validator
+git clone https://github.com/reactome/illustration-validator.git
+cd illustration-validator
 ```
 
 #### Usage
@@ -54,8 +62,9 @@ mvn clean package
 then start validating files by using the following line:
 
 ```console
-java -jar ./target/icon-validator-jar-with-dependencies.jar
+java -jar ./target/illustration-validator-jar-with-dependencies.jar
       -d path/to/icon/directory
+      -s path/to/ehld/directory
       -r references.txt
       -c categories.txt
 ```
@@ -65,16 +74,6 @@ the expected result should be as below:
 ERROR - Element "synonym" is missing value in R-ICO-013884.xml.
 ERROR - The element type "description" must be terminated by the matching end-tag "</description>". File: R-ICO-013655.xml
 ERROR - [proteoin] at the element "category" is not in the list CATEGORIES in the R-ICO-013736.xml.
+ERROR - EHLD 'R-HSA-9735786.svg': missing 'LOGO' inside 'BG' group
 ...
 ```
-
-
-
-
-
-
-
-
-
-
-

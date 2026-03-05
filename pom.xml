@@ -3,10 +3,10 @@
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.reactome.server</groupId>
-    <artifactId>icon-validator</artifactId>
+    <artifactId>illustration-validator</artifactId>
     <packaging>jar</packaging>
-    <version>1.1.0</version>
-    <name>Icon Validator</name>
+    <version>2.0.0</version>
+    <name>Illustration Validator</name>
     <organization>
         <name>The European Bioinformatics Institute</name>
         <url>http://www.ebi.ac.uk/</url>
@@ -118,7 +118,7 @@
     </repositories>
 
     <build>
-        <finalName>icon-validator</finalName>
+        <finalName>illustration-validator</finalName>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
