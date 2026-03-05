@@ -23,7 +23,6 @@ import java.util.regex.Pattern;
  *   4. LOGO exists somewhere inside BG
  *   5. At least one REGION-R-HSA-[numbers] group exists
  *   6. Each REGION has a matching OVERLAY inside it
- *   7. FG is optional (warning if missing)
  */
 public class EhldValidator implements Checker {
 
@@ -134,12 +133,6 @@ public class EhldValidator implements Checker {
                 errorLogger.error("EHLD '{}': missing 'LOGO' inside 'BG' group", filename);
                 error.incrementAndGet();
             }
-        }
-
-        // Check FG (optional, just warn)
-        Element fgElement = findElementById(topGroup, "FG");
-        if (fgElement == null) {
-            logger.warn("EHLD '{}': no 'FG' group found (optional)", filename);
         }
 
         // Check REGION-R-HSA-[numbers] groups
