@@ -1,6 +1,6 @@
 package org.reactome.server.tools.model;
 
-import javax.xml.bind.annotation.*;
+import jakarta.xml.bind.annotation.*;
 
 /**
  * Created by Chuqiao on 2019/11/12.
