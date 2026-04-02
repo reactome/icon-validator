@@ -72,6 +72,7 @@ public class IconValidator implements Checker {
         File[] xmlFiles = filesInDir.listFiles((dir, name) -> name.endsWith(".xml"));
 
         if (xmlFiles != null) {
+            System.out.println("Validating Icon XMLs...");
             xmlNum = xmlFiles.length;
             Arrays.stream(xmlFiles)
                     .parallel()
