@@ -99,7 +99,6 @@ public class IconValidator implements Checker {
     }
 
     private void validateXmlObj(File xmlFile, Icon icon) {
-        System.out.println(countRef.incrementAndGet() + " / " + xmlNum + " xml files analysed (" + xmlFile.getName() + ")");
         List<String> categories = icon.getCategories();
         for (String category : categories) {
             if (!CATEGORIES.contains(category)) {
