@@ -102,7 +102,7 @@ public class IconValidator implements Checker {
         System.out.println(countRef.incrementAndGet() + " / " + xmlNum + " xml files analysed (" + xmlFile.getName() + ")");
         List<String> categories = icon.getCategories();
         for (String category : categories) {
-            if (!CATEGORIES.contains(category.toLowerCase())) {
+            if (!CATEGORIES.contains(category())) {
                 errorLogger.error("[" + category + "] at the element \"category\" is not in the list CATEGORIES in the " + xmlFile.getName() + ".");
                 error.incrementAndGet();
             }
