@@ -100,7 +100,6 @@ public class IconValidator implements Checker {
     }
 
     private void validateXmlObj(File xmlFile, Icon icon) {
-
         List<String> categories = icon.getCategories();
         for (String category : categories) {
             if (!CATEGORIES.contains(category)) {
