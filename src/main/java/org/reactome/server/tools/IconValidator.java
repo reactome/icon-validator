@@ -72,6 +72,7 @@ public class IconValidator implements Checker {
         File[] xmlFiles = filesInDir.listFiles((dir, name) -> name.endsWith(".xml"));
 
         if (xmlFiles != null) {
+            System.out.println("Validating Icon XMLs...");
             xmlNum = xmlFiles.length;
             Arrays.stream(xmlFiles)
                     .parallel()
@@ -99,6 +100,7 @@ public class IconValidator implements Checker {
     }
 
     private void validateXmlObj(File xmlFile, Icon icon) {
+
         List<String> categories = icon.getCategories();
         for (String category : categories) {
             if (!CATEGORIES.contains(category)) {
